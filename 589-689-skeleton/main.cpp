@@ -45,6 +45,7 @@ public:
 	{
 		this->pressedKeys = std::unordered_map<int, bool>({
 			{GLFW_KEY_R, false},
+			{GLFW_KEY_E, false},
 		});
 		this->heldKeys = std::unordered_map <int, bool>({
 			{GLFW_KEY_W, false},
@@ -214,7 +215,7 @@ int main() {
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
-		glPolygonMode(GL_FRONT_AND_BACK, (model.getModelSettings().simpleWireframe ? GL_LINE : GL_FILL));
+		glPolygonMode(GL_FRONT_AND_BACK, (model.getPhongLighting().simpleWireframe ? GL_LINE : GL_FILL));
 
 		// Input
 		if (inputManager->onKeyHeld(GLFW_KEY_W)) inputManager->getCamera().handleTranslation(GLFW_KEY_W);
@@ -222,32 +223,105 @@ int main() {
 		if (inputManager->onKeyHeld(GLFW_KEY_S)) inputManager->getCamera().handleTranslation(GLFW_KEY_S);
 		if (inputManager->onKeyHeld(GLFW_KEY_D)) inputManager->getCamera().handleTranslation(GLFW_KEY_D);
 
+		if (inputManager->onKeyDown(GLFW_KEY_E)) model.getTerrain()->resetSelectedControlPoints();
+		if (inputManager->onKeyDown(GLFW_KEY_R)) model.getTerrain()->resetSelectedWeights();
+
 		glm::vec3 mousePosition3D = inputManager->getMousePosition3D();
 		model.getTerrain()->detectControlPoints(mousePosition3D);
 
 		if (inputManager->onKeyHeld(GLFW_MOUSE_BUTTON_LEFT)) {
 			glm::vec2 mousePosition2D = inputManager->getMousePosition2D();
-			model.getTerrain()->updateControlPoints(glm::vec3(0.0f, 0.1f, 0.0f));
+			float val = (model.getTerrain()->getBrushSettings().bIsRising) ? 0.1f : -0.1f;
+			model.getTerrain()->updateControlPoints(glm::vec3(0.0f, val * model.getTerrain()->getBrushSettings().brushRateScale, 0.0f));
 		}
 
 		if (inputManager->isScrollingUp()) {
-			model.getTerrain()->updateControlPoints(1.0f);
+			model.getTerrain()->updateControlPoints(1.0f * model.getTerrain()->getNURBSSettings().weightRate);
 		} else if (inputManager->isScrollingDown()) {
-			model.getTerrain()->updateControlPoints(-1.0f);
+			model.getTerrain()->updateControlPoints(-1.0f * model.getTerrain()->getNURBSSettings().weightRate);
 		}
 
 		// ImGUI
 		model.getPhongLighting().bIsChanging = false;
+		model.getTerrain()->getTerrainSettings().bIsChanging = false;
+		model.getTerrain()->getNURBSSettings().bIsChanging = false;
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		ImGui::Begin("Settings");
-		if (!model.hasTexture()) model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Diffuse colour", glm::value_ptr(model.getPhongLighting().diffuseCol));
-		model.getPhongLighting().bIsChanging |= ImGui::DragFloat3("Light's position", glm::value_ptr(model.getPhongLighting().lightPos));
-		model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Light's colour", glm::value_ptr(model.getPhongLighting().lightCol));
-		model.getPhongLighting().bIsChanging |= ImGui::SliderFloat("Ambient strength", &model.getPhongLighting().ambientStrength, 0.0f, 1.f);
-		model.getPhongLighting().bIsChanging |= ImGui::Checkbox("Simple wireframe", &model.getModelSettings().simpleWireframe);
-		ImGui::Text("Average %.1f ms/frame (%.1f fps)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::Begin("Settings", (bool*)0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+		ImGui::SetWindowPos(ImVec2(0, 0));
+		ImGui::SetWindowSize(ImVec2(610, 400));
+		ImGui::SetWindowFontScale(1.10f);
+		if (ImGui::BeginTabBar("Tab Bar")) {
+			if (ImGui::BeginTabItem("Terrain Settings")) {
+				ImGui::PushItemWidth(200);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderInt("Control Points", &model.getTerrain()->getTerrainSettings().nControlPoints, 6, 1000);
+				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderFloat("Terrain Size", &model.getTerrain()->getTerrainSettings().terrainSize, 10.0f, 100.0f);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::ColorEdit3("Terrain Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().terrainColor));
+				ImGui::ColorEdit3("Control Points Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().primaryColor));
+				ImGui::ColorEdit3("Selected Control Points Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().selectedColor));
+				ImGui::ColorEdit3("NURBS Convex Hull Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().nurbsLineColor));
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				if (ImGui::Button("Random Generation")) {}
+				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetTerrainToDefaults();
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::Text("Average %.1f ms/frame (%.1f fps)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+				ImGui::PopItemWidth();
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("NURBS Free-Form Surface Settings:")) {
+				ImGui::PushItemWidth(200);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order u: ", &model.getTerrain()->getNURBSSettings().k_u, 2, model.getTerrain()->getControlPoints().size());
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order v: ", &model.getTerrain()->getNURBSSettings().k_v, 2, model.getTerrain()->getControlPoints()[0].size());
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderFloat("Resolution: ", &model.getTerrain()->getNURBSSettings().resolution, 10, 200);
+				ImGui::SliderFloat("Weight Change Rate: ", &model.getTerrain()->getNURBSSettings().weightRate, 1.0f, 10.0f);
+				ImGui::Checkbox("Display Control Points", &model.getTerrain()->getNURBSSettings().bDisplayControlPoints);
+				ImGui::Checkbox("Display Line Segments", &model.getTerrain()->getNURBSSettings().bDisplayLineSegments);
+				ImGui::Checkbox("Bezier", &model.getTerrain()->getNURBSSettings().bBezier);
+				ImGui::Checkbox("Closed Loop", &model.getTerrain()->getNURBSSettings().bClosedLoop);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				if (ImGui::Button("Reset All Control Points")) model.getTerrain()->resetAllControlPoints();
+				if (ImGui::Button("Reset All Weights")) model.getTerrain()->resetAllWeights();
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::Text("E - Reset Selected Control Points");
+				ImGui::Text("R - Reset Selected Weights");
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetNURBSToDefaults();
+				ImGui::PopItemWidth();
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Brush Settings")) {
+				ImGui::PushItemWidth(200);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::SliderFloat("Radius of Brush: ", &model.getTerrain()->getBrushSettings().brushRadius, 0.1f, 10.5f);
+				ImGui::SliderFloat("Brush Speed: ", &model.getTerrain()->getBrushSettings().brushRateScale, 0.5f, 10.0f);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::Checkbox("Rise/Lower", &model.getTerrain()->getBrushSettings().bIsRising);
+				ImGui::Checkbox("Display Convex Hull", &model.getTerrain()->getBrushSettings().bDisplayConvexHull);
+				ImGui::Checkbox("Brushing/Add Control Point", &model.getTerrain()->getBrushSettings().bBrushingMode);
+				ImGui::Checkbox("Planar/Normal", &model.getTerrain()->getBrushSettings().bIsPlanar);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetBurshToDefaults();
+				ImGui::PopItemWidth();
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Lighting Settings")) {
+				ImGui::PushItemWidth(200);
+				if (!model.hasTexture()) model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Diffuse colour", glm::value_ptr(model.getPhongLighting().diffuseCol));
+				model.getPhongLighting().bIsChanging |= ImGui::DragFloat3("Light's position", glm::value_ptr(model.getPhongLighting().lightPos));
+				model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Light's colour", glm::value_ptr(model.getPhongLighting().lightCol));
+				model.getPhongLighting().bIsChanging |= ImGui::SliderFloat("Ambient strength", &model.getPhongLighting().ambientStrength, 0.0f, 1.f);
+				model.getPhongLighting().bIsChanging |= ImGui::Checkbox("Simple wireframe", &model.getPhongLighting().simpleWireframe);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				if (ImGui::Button("Reset to Defaults")) model.resetLightingToDefaults();
+				ImGui::PopItemWidth();
+				ImGui::EndTabItem();
+			}
+			ImGui::EndTabBar();
+		}
 		ImGui::End();
 
 		// Render

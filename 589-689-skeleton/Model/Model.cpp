@@ -19,7 +19,15 @@ Model::Model(const std::string& fileName, const std::string& texturePath) :
 
 bool Model::hasTexture() { return this->process.cpuGeom.uvs.size() > 0 && !this->texturePath.empty(); }
 PhongLighting& Model::getPhongLighting() { return this->phongLighting; }
-ModelSettings& Model::getModelSettings() { return this->modelSettings; }
 std::shared_ptr<FFS> Model::getTerrain() { return this->terrain; }
+
+void Model::resetLightingToDefaults() {
+	this->phongLighting.lightPos = glm::vec3(0.0f, 35.0f, -35.0f);
+	this->phongLighting.lightCol = glm::vec3(1.0f, 1.0f, 1.0f);
+	this->phongLighting.diffuseCol = glm::vec3(1.0f, 0.0f, 0.0f);
+	this->phongLighting.ambientStrength = 0.035f;
+	this->phongLighting.simpleWireframe = true;
+	this->phongLighting.bIsChanging = true;
+}
 
 void Model::render() { glDrawArrays(GL_TRIANGLES, 0, GLsizei(this->process.cpuGeom.verts.size())); }
