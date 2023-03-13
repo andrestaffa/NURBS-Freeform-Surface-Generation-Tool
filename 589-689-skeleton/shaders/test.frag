@@ -26,7 +26,6 @@ void main() {
 		diffuseCol = diffuseStrength * texture(tex, fragUV).rgb;
 	}
 
-	// UNCOMMENT WHEN USING NORMALS
-	// color = vec4(lightCol * (vec3(ambientStrength) + diffuseCol), 1.0);
-	color = vec4(fragColor, 1.0);
+	color = (n == vec3(0.0f, 0.0f, 0.0f)) ? vec4(fragColor, 1.0) : vec4(lightCol * (vec3(ambientStrength) + diffuseCol), 1.0);
+
 }

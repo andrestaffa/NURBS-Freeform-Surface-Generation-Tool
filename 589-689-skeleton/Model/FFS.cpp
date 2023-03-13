@@ -134,27 +134,32 @@ void FFS::generateTerrain(const std::vector<std::vector<glm::vec3>>& P, const st
 		i += 1;
 	} 
 
-	std::vector<glm::vec3> surface = this->generateQuads(Q);
+	std::vector<glm::vec3> surfacePoints = this->generateQuads(Q);
+	std::vector<glm::vec2> surfaceUVs = this->generateTextureCoord(Q);
+	std::vector<glm::vec3> surfaceNormals = this->generateNormals(Q);
+
 	std::vector<glm::vec3> quadPoints = this->generateQuads(P);
 
 	// Surface
 	this->freeFormSurface.gpuGeom.bind();
-	this->freeFormSurface.cpuGeom.verts = surface;
-	this->freeFormSurface.cpuGeom.cols.resize(this->freeFormSurface.cpuGeom.verts.size(), this->terrainSettings.terrainColor);
+	this->freeFormSurface.cpuGeom.verts = surfacePoints;
+	this->freeFormSurface.cpuGeom.uvs = surfaceUVs;
+	this->freeFormSurface.cpuGeom.normals = surfaceNormals;
 	this->freeFormSurface.gpuGeom.setVerts(this->freeFormSurface.cpuGeom.verts);
-	this->freeFormSurface.gpuGeom.setCols(this->freeFormSurface.cpuGeom.cols);
+	this->freeFormSurface.gpuGeom.setUVs(this->freeFormSurface.cpuGeom.uvs);
+	this->freeFormSurface.gpuGeom.setNormals(this->freeFormSurface.cpuGeom.normals);
 
 	// Control Points
 	this->controlPoints.gpuGeom.bind();
 	this->controlPoints.cpuGeom.verts = quadPoints;
-	this->controlPoints.cpuGeom.cols.resize(this->controlPoints.cpuGeom.verts.size(), this->terrainSettings.primaryColor);
+	this->controlPoints.cpuGeom.cols.resize(this->controlPoints.cpuGeom.verts.size(), glm::vec3(1.0f, 0.0f, 0.0f));
 	this->controlPoints.gpuGeom.setVerts(this->controlPoints.cpuGeom.verts);
 	this->controlPoints.gpuGeom.setCols(this->controlPoints.cpuGeom.cols);
 
 	// NURBS Lines
 	this->nurbsLines.gpuGeom.bind();
 	this->nurbsLines.cpuGeom.verts = quadPoints;
-	this->nurbsLines.cpuGeom.cols.resize(this->nurbsLines.cpuGeom.verts.size(), this->terrainSettings.nurbsLineColor);
+	this->nurbsLines.cpuGeom.cols.resize(this->nurbsLines.cpuGeom.verts.size(), glm::vec3(0.0f, 1.0f, 0.0f));
 	this->nurbsLines.gpuGeom.setVerts(this->nurbsLines.cpuGeom.verts);
 	this->nurbsLines.gpuGeom.setCols(this->nurbsLines.cpuGeom.cols);
 
@@ -175,6 +180,127 @@ std::vector<glm::vec3> FFS::generateQuads(const std::vector<std::vector<glm::vec
 	return R;
 }
 
+std::vector<glm::vec2> FFS::generateQuads(const std::vector<std::vector<glm::vec2>>& points) {
+	std::vector<glm::vec2> R;
+	for (size_t i = 0; i < points.size() - 1; i++) {
+		for (size_t j = 0; j < points[i].size() - 1; j++) {
+			R.push_back(points[i][j + 1]);
+			R.push_back(points[i][j]);
+			R.push_back(points[i + 1][j]);
+			R.push_back(points[i][j + 1]);
+			R.push_back(points[i + 1][j + 1]);
+			R.push_back(points[i + 1][j]);
+		}
+	}
+	return R;
+}
+
+std::vector<glm::vec2> FFS::generateTextureCoord(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+	std::vector<std::vector<glm::vec2>> textureCoordinates;
+	const int width = controlPoints.size();
+	const int height = controlPoints[0].size();
+	const float maxVal = std::max(width, height);
+	for (int x = 0; x < width; ++x) {
+		std::vector<glm::vec2> row;
+		for (int y = 0; y < height; ++y) {
+			const float u = (x + 0.5f) / maxVal;
+			const float v = (y + 0.5f) / maxVal;
+			row.push_back(glm::vec2(u, v));
+		}
+		textureCoordinates.push_back(row);
+	}
+	std::vector<glm::vec2> T = this->generateQuads(textureCoordinates);
+	return T;
+}
+
+std::vector<glm::vec3> FFS::generateNormals(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+	std::vector<std::vector<glm::vec3>> normals;
+	int numRows = controlPoints.size();
+	int numCols = controlPoints[0].size();
+	normals.resize(numRows);
+	for (int i = 0; i < numRows; i++) {
+		normals[i].resize(numCols);
+	}
+	for (int i = 0; i < numRows; i++) {
+		for (int j = 0; j < numCols; j++) {
+			glm::vec3 normal(0.0f, 0.0f, 0.0f);
+			if (i > 0 && j > 0) {
+				glm::vec3 v1 = controlPoints[i][j] - controlPoints[i][j - 1];
+				glm::vec3 v2 = controlPoints[i][j] - controlPoints[i - 1][j];
+				normal += glm::cross(v1, v2);
+			}
+			if (i > 0 && j < numCols - 1) {
+				glm::vec3 v1 = controlPoints[i][j] - controlPoints[i - 1][j];
+				glm::vec3 v2 = controlPoints[i][j] - controlPoints[i][j + 1];
+				normal += glm::cross(v1, v2);
+			}
+			if (i < numRows - 1 && j < numCols - 1) {
+				glm::vec3 v1 = controlPoints[i][j] - controlPoints[i][j + 1];
+				glm::vec3 v2 = controlPoints[i][j] - controlPoints[i + 1][j];
+				normal += glm::cross(v1, v2);
+			}
+			if (i < numRows - 1 && j > 0) {
+				glm::vec3 v1 = controlPoints[i][j] - controlPoints[i + 1][j];
+				glm::vec3 v2 = controlPoints[i][j] - controlPoints[i][j - 1];
+				normal += glm::cross(v1, v2);
+			}
+			normals[i][j] = glm::normalize(normal);
+		}
+	}
+	std::vector<glm::vec3> N = this->generateQuads(normals);
+	return N;
+}
+
+// .obj Formatting
+
+std::vector<std::string> FFS::generateOBJVertices(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+	std::vector<std::string> vertices;
+	int numRows = controlPoints.size();
+	int numCols = controlPoints[0].size();
+	for (int i = 0; i < numRows; i++) {
+		for (int j = 0; j < numCols; j++) {
+			const glm::vec3& cp = controlPoints[i][j];
+			std::string vertexStr = "v " + std::to_string(cp.x) + ", " + std::to_string(cp.y) + ", " + std::to_string(cp.z);
+			vertices.push_back(vertexStr);
+		}
+	}
+	return vertices;
+}
+
+std::vector<std::string> FFS::generateOBJTextureCoord(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+	std::vector<std::string> textureCoords;
+	return textureCoords;
+}
+
+std::vector<std::string> FFS::generateOBJNormals(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+	std::vector<std::string> normals;
+	return normals;
+}
+
+std::vector<std::string> FFS::generateOBJFaces(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+	std::vector<std::string> faces;
+	int numRows = controlPoints.size();
+	int numCols = controlPoints[0].size();
+	for (int i = 0; i < numRows - 1; i++) {
+		for (int j = 0; j < numCols - 1; j++) {
+			int v1 = i * numCols + j + 1;
+			int v2 = i * numCols + j + 2;
+			int v3 = (i + 1) * numCols + j + 1;
+
+			std::string faceStr = "f " + std::to_string(v1) + " " + std::to_string(v2) + " " + std::to_string(v3);
+			faces.push_back(faceStr);
+
+			v1 = (i + 1) * numCols + j + 1;
+			v2 = i * numCols + j + 2;
+			v3 = (i + 1) * numCols + j + 2;
+
+			faceStr = "f " + std::to_string(v1) + " " + std::to_string(v2) + " " + std::to_string(v3);
+			faces.push_back(faceStr);
+		}
+	}
+	return faces;
+}
+
 // Ground Plane Detection of Control Points (NEED MAKE MUCH MORE EFFICIENT ALGORITHM)
 
 void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
@@ -192,9 +318,7 @@ void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
 			}
 		}
 	}
-	this->controlPointsChangeColor(mousePosition3D, this->terrainSettings.selectedColor);
-	this->terrainChangeColor(this->terrainSettings.terrainColor);
-	this->nurbsChangeLineColor(this->terrainSettings.nurbsLineColor);
+	this->controlPointsChangeColor(mousePosition3D, glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
 void FFS::updateControlPoints(const glm::vec3& position) {
@@ -228,19 +352,9 @@ void FFS::controlPointsChangeColor(const glm::vec3& mousePosition3D, const glm::
 		const glm::vec3* pointPos = &this->controlPoints.cpuGeom.verts[i];
 		float distanceXZ = glm::length(glm::vec2(mousePosition3D.x, mousePosition3D.z) - glm::vec2(pointPos->x, pointPos->z));
 		float distanceY = glm::length(glm::vec1(mousePosition3D.y) - glm::vec1(pointPos->y));
-		this->controlPoints.cpuGeom.cols[i] = (distanceXZ <= this->brushSettings.brushRadius && distanceY <= 1000.0f) ? color : this->terrainSettings.primaryColor;
+		this->controlPoints.cpuGeom.cols[i] = (distanceXZ <= this->brushSettings.brushRadius && distanceY <= 1000.0f) ? color : glm::vec3(1.0f, 0.0f, 0.0f);
 	}
 	this->controlPoints.gpuGeom.setCols(this->controlPoints.cpuGeom.cols);
-}
-
-void FFS::terrainChangeColor(const glm::vec3& color) {
-	for (glm::vec3& col : this->freeFormSurface.cpuGeom.cols) col = color;
-	this->freeFormSurface.gpuGeom.setCols(this->freeFormSurface.cpuGeom.cols);
-}
-
-void FFS::nurbsChangeLineColor(const glm::vec3& color) {
-	for (glm::vec3& col : this->nurbsLines.cpuGeom.cols) col = color;
-	this->nurbsLines.gpuGeom.setCols(this->nurbsLines.cpuGeom.cols);
 }
 
 // MARK: - Settings
@@ -276,10 +390,6 @@ void FFS::resetTerrain() {
 void FFS::resetTerrainToDefaults() {
 	this->resetTerrain();
 	this->terrainSettings.nControlPoints = 20;
-	this->terrainSettings.terrainColor = glm::vec3(0.0f, 0.0f, 0.0f);
-	this->terrainSettings.primaryColor = glm::vec3(1.0f, 0.0f, 0.0f);
-	this->terrainSettings.selectedColor = glm::vec3(0.0f, 0.0f, 1.0f);
-	this->terrainSettings.nurbsLineColor = glm::vec3(0.0f, 1.0f, 0.0f);
 	this->terrainSettings.terrainSize = 10.0f;
 	this->terrainSettings.bIsChanging = true;
 }

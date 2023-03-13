@@ -16,10 +16,6 @@ struct Process { CPU_Geometry cpuGeom; GPU_Geometry gpuGeom; };
 
 struct TerrainSettings {
 	int nControlPoints = 20;
-	glm::vec3 terrainColor = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 primaryColor = glm::vec3(1.0f, 0.0f, 0.0f);
-	glm::vec3 selectedColor = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 nurbsLineColor = glm::vec3(0.0f, 1.0f, 0.0f);
 	float terrainSize = 10.0f;
 	bool bIsChanging = false;
 };
@@ -54,12 +50,16 @@ class FFS {
 
 private:
 
+	// Processes
 	Process controlPoints;
 	Process freeFormSurface;
 	Process nurbsLines;
 
+	// Generated Control Points & Weights
 	std::vector<std::vector<glm::vec3>> generatedPoints;
 	std::vector<std::vector<float>> weights;
+
+	// Control Point Properties
 	ControlPointProperties controlPointProperties;
 
 	// Terrain Settings
@@ -70,6 +70,7 @@ private:
 	BrushSettings brushSettings;
 	
 public:
+
 	FFS();
 
 public:
@@ -87,30 +88,45 @@ private:
 	// FFS
 	std::vector<std::vector<glm::vec3>> generateControlPoints();
 	void generateTerrain(const std::vector<std::vector<glm::vec3>>& P, const std::vector<std::vector<float>>& W);
+
+	// Surface Properties
 	std::vector<glm::vec3> generateQuads(const std::vector<std::vector<glm::vec3>>& points);
+	std::vector<glm::vec2> generateQuads(const std::vector<std::vector<glm::vec2>>& points);
+	std::vector<glm::vec2> generateTextureCoord(const std::vector<std::vector<glm::vec3>>& controlPoints);
+	std::vector<glm::vec3> generateNormals(const std::vector<std::vector<glm::vec3>>& controlPoints);
+
+	// .obj Formatting
+	std::vector<std::string> generateOBJVertices(const std::vector<std::vector<glm::vec3>>& controlPoints);
+	std::vector<std::string> generateOBJTextureCoord(const std::vector<std::vector<glm::vec3>>& controlPoints);
+	std::vector<std::string> generateOBJNormals(const std::vector<std::vector<glm::vec3>>& controlPoints);
+	std::vector<std::string> generateOBJFaces(const std::vector<std::vector<glm::vec3>>& controlPoints);
 
 public:
 
-	// Ground Plane Detection of Control Points
+	// Control Point Updates
 	void detectControlPoints(const glm::vec3& mousePosition3D);
-
 	void updateControlPoints(const glm::vec3& position);
 	void updateControlPoints(float weight);
 
-
 private:
-
 
 	// Terrain Settings
 	void controlPointsChangeColor(const glm::vec3& mousePosition3D, const glm::vec3& color);
-	void terrainChangeColor(const glm::vec3& color);
-	void nurbsChangeLineColor(const glm::vec3& color);
 	void resetTerrain();
 
 public:
 
-	// Control Points
-	const std::vector<std::vector<glm::vec3>>& getControlPoints() const { return this->generatedPoints; }
+	// Processes
+	const Process& getControlPoints() const { return this->controlPoints; }
+	const Process& getFreeFormSurface() const { return this->freeFormSurface; }
+	const Process& getNURBSControlPolygon() const { return this->nurbsLines; }
+
+	// Generated Control Points & Weights
+	const std::vector<std::vector<glm::vec3>>& getGeneratedControlPoints() const { return this->generatedPoints; }
+	const std::vector<std::vector<float>>& getGeneratedWeights() const { return this->weights; }
+
+	// Control Point Properties
+	const ControlPointProperties& getControlPointProperties() const { return this->controlPointProperties; }
 
 	// Terrain Settings
 	void createTerrain();

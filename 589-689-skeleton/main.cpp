@@ -170,20 +170,8 @@ public:
 		// Compute the intersection point with the x-z plane at y=0
 		float t = -ray_origin.y / ray_wor.y;
 		glm::vec3 intersection_point = ray_origin + t * ray_wor;
-		//intersection_point.y = 0;
 
 		return intersection_point;
-
-		// NORMAL BASED PROJECTION
-
-		//// Calculate intersection point with plane
-		//float t = glm::dot((surfacePoint - cameraPosition), surfaceNormal) / glm::dot(ray_wor, surfaceNormal);
-		//glm::vec3 intersectionPoint = cameraPosition + ray_wor * t;
-
-		//// Modify y component based on surface normal
-		//intersectionPoint.y += glm::dot(ray_wor, surfaceNormal);
-
-		//return intersectionPoint;
 	}
 
 	Camera& getCamera() { return this->camera; }
@@ -259,23 +247,27 @@ int main() {
 				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderInt("Control Points", &model.getTerrain()->getTerrainSettings().nControlPoints, 6, 1000);
 				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderFloat("Terrain Size", &model.getTerrain()->getTerrainSettings().terrainSize, 10.0f, 100.0f);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				ImGui::ColorEdit3("Terrain Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().terrainColor));
-				ImGui::ColorEdit3("Control Points Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().primaryColor));
-				ImGui::ColorEdit3("Selected Control Points Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().selectedColor));
-				ImGui::ColorEdit3("NURBS Convex Hull Color", glm::value_ptr(model.getTerrain()->getTerrainSettings().nurbsLineColor));
-				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Random Generation")) {}
 				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetTerrainToDefaults();
-				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				for (int i = 0; i < 5; i++) ImGui::Spacing();
+				if (ImGui::Button("Reset All")) {
+					model.getTerrain()->resetNURBSToDefaults();
+					model.getTerrain()->resetAllWeights();
+					model.getTerrain()->resetAllControlPoints();
+					model.getTerrain()->resetTerrainToDefaults();
+					model.getTerrain()->resetBurshToDefaults();
+					model.resetLightingToDefaults();
+				}
+				for (int i = 0; i < 5; i++) ImGui::Spacing();
 				ImGui::Text("Average %.1f ms/frame (%.1f fps)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 				ImGui::PopItemWidth();
 				ImGui::EndTabItem();
 			}
-			if (ImGui::BeginTabItem("NURBS Free-Form Surface Settings:")) {
+			if (ImGui::BeginTabItem("NURBS Surface Settings")) {
 				ImGui::PushItemWidth(200);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order u: ", &model.getTerrain()->getNURBSSettings().k_u, 2, model.getTerrain()->getControlPoints().size());
-				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order v: ", &model.getTerrain()->getNURBSSettings().k_v, 2, model.getTerrain()->getControlPoints()[0].size());
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order u: ", &model.getTerrain()->getNURBSSettings().k_u, 2, model.getTerrain()->getGeneratedControlPoints().size());
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order v: ", &model.getTerrain()->getNURBSSettings().k_v, 2, model.getTerrain()->getGeneratedControlPoints()[0].size());
 				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderFloat("Resolution: ", &model.getTerrain()->getNURBSSettings().resolution, 10, 200);
 				ImGui::SliderFloat("Weight Change Rate: ", &model.getTerrain()->getNURBSSettings().weightRate, 1.0f, 10.0f);
 				ImGui::Checkbox("Display Control Points", &model.getTerrain()->getNURBSSettings().bDisplayControlPoints);
@@ -310,10 +302,12 @@ int main() {
 			}
 			if (ImGui::BeginTabItem("Lighting Settings")) {
 				ImGui::PushItemWidth(200);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (!model.hasTexture()) model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Diffuse colour", glm::value_ptr(model.getPhongLighting().diffuseCol));
 				model.getPhongLighting().bIsChanging |= ImGui::DragFloat3("Light's position", glm::value_ptr(model.getPhongLighting().lightPos));
 				model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Light's colour", glm::value_ptr(model.getPhongLighting().lightCol));
 				model.getPhongLighting().bIsChanging |= ImGui::SliderFloat("Ambient strength", &model.getPhongLighting().ambientStrength, 0.0f, 1.f);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				model.getPhongLighting().bIsChanging |= ImGui::Checkbox("Simple wireframe", &model.getPhongLighting().simpleWireframe);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset to Defaults")) model.resetLightingToDefaults();
