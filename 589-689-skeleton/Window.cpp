@@ -119,6 +119,72 @@ void Window::setupImGui()
 	ImGui_ImplOpenGL3_Init("#version 330 core");
 }
 
+void Window::openDirectory(std::string& dir) {
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (SUCCEEDED(hr)) {
+		IFileDialog* pFileDialog;
+		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileDialog, reinterpret_cast<void**>(&pFileDialog));
+		if (SUCCEEDED(hr)) {
+			DWORD dwOptions;
+			hr = pFileDialog->GetOptions(&dwOptions);
+			if (SUCCEEDED(hr)) {
+				hr = pFileDialog->SetOptions(dwOptions | FOS_PICKFOLDERS);
+			}
+			hr = pFileDialog->Show(NULL);
+			if (SUCCEEDED(hr)) {
+				IShellItem* pItem;
+				hr = pFileDialog->GetResult(&pItem);
+				if (SUCCEEDED(hr)) {
+					PWSTR pszFilePath;
+					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+					if (SUCCEEDED(hr)) {
+						int len = WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, NULL, 0, NULL, NULL);
+						std::string filePath(len, '\0');
+						WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, &filePath[0], len, NULL, NULL);
+						dir = filePath;
+						CoTaskMemFree(pszFilePath);
+					}
+					pItem->Release();
+				}
+			}
+			pFileDialog->Release();
+		}
+		CoUninitialize();
+	}
+}
+
+void Window::openFile(std::string& fileLocation, const std::vector<COMDLG_FILTERSPEC>& fileTypes) {
+	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (SUCCEEDED(hr)) {
+		IFileOpenDialog* pFileOpen;
+		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+		if (SUCCEEDED(hr)) {
+			if (!fileTypes.empty()) hr = pFileOpen->SetFileTypes(fileTypes.size(), &fileTypes[0]);
+			if (SUCCEEDED(hr)) {
+				hr = pFileOpen->Show(NULL);
+				if (SUCCEEDED(hr)) {
+					IShellItem* pItem;
+					hr = pFileOpen->GetResult(&pItem);
+					if (SUCCEEDED(hr)) {
+						PWSTR pszFilePath;
+						hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+						if (SUCCEEDED(hr)) {
+							int len = WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, NULL, 0, NULL, NULL);
+							std::string filePath(len, '\0');
+							WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, &filePath[0], len, NULL, NULL);
+							fileLocation = filePath;
+							CoTaskMemFree(pszFilePath);
+						}
+						pItem->Release();
+					}
+				}
+			}
+			pFileOpen->Release();
+		}
+		CoUninitialize();
+	}
+}
+
 void Window::connectCallbacks() {
 	// set userdata of window to point to the object that carries out the callbacks
 	glfwSetWindowUserPointer(window.get(), callbacks.get());

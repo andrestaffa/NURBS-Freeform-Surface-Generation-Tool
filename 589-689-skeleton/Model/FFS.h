@@ -14,6 +14,17 @@
 
 struct Process { CPU_Geometry cpuGeom; GPU_Geometry gpuGeom; };
 
+struct GeneratedTerrain {
+	std::vector<std::vector<glm::vec3>> generatedPoints;
+	std::vector<std::vector<float>> weights;
+	std::vector<std::vector<glm::vec3>> Q;
+};
+
+struct ControlPointProperties {
+	std::vector<glm::vec3*> selectedControlPoints;
+	std::vector<float*> selectedWeights;
+};
+
 struct TerrainSettings {
 	int nControlPoints = 20;
 	float terrainSize = 10.0f;
@@ -41,11 +52,6 @@ struct BrushSettings {
 	bool bIsPlanar = true;
 };
 
-struct ControlPointProperties {
-	std::vector<glm::vec3*> selectedControlPoints;
-	std::vector<float*> selectedWeights;
-};
-
 class FFS {
 
 private:
@@ -55,9 +61,8 @@ private:
 	Process freeFormSurface;
 	Process nurbsLines;
 
-	// Generated Control Points & Weights
-	std::vector<std::vector<glm::vec3>> generatedPoints;
-	std::vector<std::vector<float>> weights;
+	// Generated Control Points, Weights & Curve
+	GeneratedTerrain generatedTerrain;
 
 	// Control Point Properties
 	ControlPointProperties controlPointProperties;
@@ -96,10 +101,8 @@ private:
 	std::vector<glm::vec3> generateNormals(const std::vector<std::vector<glm::vec3>>& controlPoints);
 
 	// .obj Formatting
-	std::vector<std::string> generateOBJVertices(const std::vector<std::vector<glm::vec3>>& controlPoints);
-	std::vector<std::string> generateOBJTextureCoord(const std::vector<std::vector<glm::vec3>>& controlPoints);
-	std::vector<std::string> generateOBJNormals(const std::vector<std::vector<glm::vec3>>& controlPoints);
-	std::vector<std::string> generateOBJFaces(const std::vector<std::vector<glm::vec3>>& controlPoints);
+	std::vector<std::string> generateObjVertices(const std::vector<std::vector<glm::vec3>>& controlPoints);
+	std::vector<std::string> generateObjFaces(const std::vector<std::vector<glm::vec3>>& controlPoints);
 
 public:
 
@@ -121,9 +124,8 @@ public:
 	const Process& getFreeFormSurface() const { return this->freeFormSurface; }
 	const Process& getNURBSControlPolygon() const { return this->nurbsLines; }
 
-	// Generated Control Points & Weights
-	const std::vector<std::vector<glm::vec3>>& getGeneratedControlPoints() const { return this->generatedPoints; }
-	const std::vector<std::vector<float>>& getGeneratedWeights() const { return this->weights; }
+	// Generated Control Points, Weights & Curve
+	const GeneratedTerrain& getGeneratedTerrain() const { return this->generatedTerrain; }
 
 	// Control Point Properties
 	const ControlPointProperties& getControlPointProperties() const { return this->controlPointProperties; }
@@ -144,5 +146,8 @@ public:
 	// Brush Settings
 	void resetBurshToDefaults();
 	BrushSettings& getBrushSettings() { return this->brushSettings; }
+
+	// .obj Formatting
+	std::vector<std::string> getExportObjFormat();
 
 };

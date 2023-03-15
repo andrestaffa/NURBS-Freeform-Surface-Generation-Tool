@@ -1,14 +1,14 @@
 #include "FFS.h"
 
 FFS::FFS() {
-	this->generatedPoints = this->generateControlPoints();
-	this->weights = this->generateWeights(this->generatedPoints.size(), this->generatedPoints.size());
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generatedTerrain.generatedPoints = this->generateControlPoints();
+	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints.size());
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::render() {
 	if (this->terrainSettings.bIsChanging) this->createTerrain();
-	if (this->nurbsSettings.bIsChanging) this->generateTerrain(this->generatedPoints, this->weights);
+	if (this->nurbsSettings.bIsChanging) this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 	if (this->nurbsSettings.bDisplayControlPoints) {
 		glPointSize(10.0f);
 		this->controlPoints.gpuGeom.bind();
@@ -120,24 +120,22 @@ std::vector<std::vector<glm::vec3>> FFS::generateControlPoints() {
 }
 
 void FFS::generateTerrain(const std::vector<std::vector<glm::vec3>>& P, const std::vector<std::vector<float>>& W) {
-	std::vector<std::vector<glm::vec3>> Q;
-
+	this->generatedTerrain.Q.clear();
 	std::vector<float> U = this->generateKnotSequence(P.size(), this->nurbsSettings.k_u);
 	std::vector<float> V = this->generateKnotSequence(P[0].size(), this->nurbsSettings.k_v);
 
 	int i = 0;
 	for (float u = U[this->nurbsSettings.k_u - 1]; u <= U[P.size() + 1]; u += (1.0f / this->nurbsSettings.resolution)) {
-		Q.push_back(std::vector<glm::vec3>());
+		this->generatedTerrain.Q.push_back(std::vector<glm::vec3>());
 		for (float v = V[this->nurbsSettings.k_v - 1]; v <= V[P[0].size() + 1]; v += (1.0f / this->nurbsSettings.resolution)) {
-			Q[i].push_back(this->FFS_NURBS(P, U, V, W, u, v, this->nurbsSettings.k_u, this->nurbsSettings.k_v, P.size()));
+			this->generatedTerrain.Q[i].push_back(this->FFS_NURBS(P, U, V, W, u, v, this->nurbsSettings.k_u, this->nurbsSettings.k_v, P.size()));
 		}
 		i += 1;
 	} 
 
-	std::vector<glm::vec3> surfacePoints = this->generateQuads(Q);
-	std::vector<glm::vec2> surfaceUVs = this->generateTextureCoord(Q);
-	std::vector<glm::vec3> surfaceNormals = this->generateNormals(Q);
-
+	std::vector<glm::vec3> surfacePoints = this->generateQuads(this->generatedTerrain.Q);
+	std::vector<glm::vec2> surfaceUVs = this->generateTextureCoord(this->generatedTerrain.Q);
+	std::vector<glm::vec3> surfaceNormals = this->generateNormals(this->generatedTerrain.Q);
 	std::vector<glm::vec3> quadPoints = this->generateQuads(P);
 
 	// Surface
@@ -169,12 +167,12 @@ std::vector<glm::vec3> FFS::generateQuads(const std::vector<std::vector<glm::vec
 	std::vector<glm::vec3> R;
 	for (size_t i = 0; i < points.size() - 1; i++) {
 		for (size_t j = 0; j < points[i].size() - 1; j++) {
-			R.push_back(points[i][j + 1]); // Top Left
-			R.push_back(points[i][j]); // Bottom Left
-			R.push_back(points[i + 1][j]); // Bottom Right
-			R.push_back(points[i][j + 1]); // Top Left
-			R.push_back(points[i + 1][j + 1]); // Top Right
-			R.push_back(points[i + 1][j]); // Bottom Right
+			R.push_back(points[i][j + 1]);
+			R.push_back(points[i][j]);
+			R.push_back(points[i + 1][j]);
+			R.push_back(points[i][j + 1]);
+			R.push_back(points[i + 1][j + 1]);
+			R.push_back(points[i + 1][j]);
 		}
 	}
 	return R;
@@ -253,31 +251,21 @@ std::vector<glm::vec3> FFS::generateNormals(const std::vector<std::vector<glm::v
 
 // .obj Formatting
 
-std::vector<std::string> FFS::generateOBJVertices(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+std::vector<std::string> FFS::generateObjVertices(const std::vector<std::vector<glm::vec3>>& controlPoints) {
 	std::vector<std::string> vertices;
 	int numRows = controlPoints.size();
 	int numCols = controlPoints[0].size();
 	for (int i = 0; i < numRows; i++) {
 		for (int j = 0; j < numCols; j++) {
 			const glm::vec3& cp = controlPoints[i][j];
-			std::string vertexStr = "v " + std::to_string(cp.x) + ", " + std::to_string(cp.y) + ", " + std::to_string(cp.z);
+			std::string vertexStr = "v " + std::to_string(cp.x) + " " + std::to_string(cp.y) + " " + std::to_string(cp.z);
 			vertices.push_back(vertexStr);
 		}
 	}
 	return vertices;
 }
 
-std::vector<std::string> FFS::generateOBJTextureCoord(const std::vector<std::vector<glm::vec3>>& controlPoints) {
-	std::vector<std::string> textureCoords;
-	return textureCoords;
-}
-
-std::vector<std::string> FFS::generateOBJNormals(const std::vector<std::vector<glm::vec3>>& controlPoints) {
-	std::vector<std::string> normals;
-	return normals;
-}
-
-std::vector<std::string> FFS::generateOBJFaces(const std::vector<std::vector<glm::vec3>>& controlPoints) {
+std::vector<std::string> FFS::generateObjFaces(const std::vector<std::vector<glm::vec3>>& controlPoints) {
 	std::vector<std::string> faces;
 	int numRows = controlPoints.size();
 	int numCols = controlPoints[0].size();
@@ -301,20 +289,37 @@ std::vector<std::string> FFS::generateOBJFaces(const std::vector<std::vector<glm
 	return faces;
 }
 
+std::vector<std::string> FFS::getExportObjFormat() {
+	std::vector<std::string> objs = this->generateObjVertices(this->generatedTerrain.Q);
+	std::vector<std::string> faces = this->generateObjFaces(this->generatedTerrain.Q);
+	std::vector<glm::vec2> surfaceUVs = this->generateTextureCoord(this->generatedTerrain.Q);
+	std::vector<glm::vec3> surfaceNormals = this->generateNormals(this->generatedTerrain.Q);
+	for (const glm::vec2& uv : surfaceUVs) {
+		std::string uvStr = "vt " + std::to_string(uv.x) + " " + std::to_string(uv.y);
+		objs.push_back(uvStr);
+	}
+	for (const glm::vec3& normal : surfaceNormals) {
+		std::string normalStr = "vn " + std::to_string(normal.x) + " " + std::to_string(normal.y) + " " + std::to_string(normal.z);
+		objs.push_back(normalStr);
+	}
+	objs.insert(objs.end(), faces.begin(), faces.end());
+	return objs;
+}
+
 // Ground Plane Detection of Control Points (NEED MAKE MUCH MORE EFFICIENT ALGORITHM)
 
 void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
 	if (this->controlPoints.cpuGeom.verts.empty()) return;
 	this->controlPointProperties.selectedControlPoints.clear();
 	this->controlPointProperties.selectedWeights.clear();
-	for (size_t i = 0; i < this->generatedPoints.size(); i++) {
-		for (size_t j = 0; j < this->generatedPoints[i].size(); j++) {
-			const glm::vec3* pointPos = &this->generatedPoints[i][j];
+	for (size_t i = 0; i < this->generatedTerrain.generatedPoints.size(); i++) {
+		for (size_t j = 0; j < this->generatedTerrain.generatedPoints[i].size(); j++) {
+			const glm::vec3* pointPos = &this->generatedTerrain.generatedPoints[i][j];
 			float distanceXZ = glm::length(glm::vec2(mousePosition3D.x, mousePosition3D.z) - glm::vec2(pointPos->x, pointPos->z));
 			float distanceY = glm::length(glm::vec1(mousePosition3D.y) - glm::vec1(pointPos->y));
 			if (distanceXZ <= this->brushSettings.brushRadius && distanceY <= 1000.0f) {
-				this->controlPointProperties.selectedControlPoints.push_back(&this->generatedPoints[i][j]);
-				this->controlPointProperties.selectedWeights.push_back(&this->weights[i][j]);
+				this->controlPointProperties.selectedControlPoints.push_back(&this->generatedTerrain.generatedPoints[i][j]);
+				this->controlPointProperties.selectedWeights.push_back(&this->generatedTerrain.weights[i][j]);
 			}
 		}
 	}
@@ -326,7 +331,7 @@ void FFS::updateControlPoints(const glm::vec3& position) {
 	for (glm::vec3* point : this->controlPointProperties.selectedControlPoints) {
 		*point += position;
 	}
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::updateControlPoints(float weight) {
@@ -342,7 +347,7 @@ void FFS::updateControlPoints(float weight) {
 		}
 		*w += weight;
 	}
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 // MARK: - Colors
@@ -363,9 +368,9 @@ void FFS::controlPointsChangeColor(const glm::vec3& mousePosition3D, const glm::
 
 void FFS::createTerrain() {
 	this->resetTerrain();
-	this->generatedPoints = this->generateControlPoints();
-	this->weights = this->generateWeights(this->generatedPoints.size(), this->generatedPoints.size());
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generatedTerrain.generatedPoints = this->generateControlPoints();
+	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints.size());
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::resetTerrain() {
@@ -373,8 +378,8 @@ void FFS::resetTerrain() {
 	this->controlPoints.cpuGeom.cols.clear(); this->controlPoints.cpuGeom.cols.shrink_to_fit(); std::vector<glm::vec3>().swap(this->controlPoints.cpuGeom.cols);
 	this->freeFormSurface.cpuGeom.verts.clear(); this->freeFormSurface.cpuGeom.verts.shrink_to_fit(); std::vector<glm::vec3>().swap(this->freeFormSurface.cpuGeom.verts);
 	this->freeFormSurface.cpuGeom.cols.clear(); this->freeFormSurface.cpuGeom.cols.shrink_to_fit(); std::vector<glm::vec3>().swap(this->freeFormSurface.cpuGeom.cols);
-	this->generatedPoints.clear(); this->generatedPoints.shrink_to_fit(); std::vector<std::vector<glm::vec3>>().swap(this->generatedPoints);
-	this->weights.clear(); this->weights.shrink_to_fit(); std::vector<std::vector<float>>().swap(this->weights);
+	this->generatedTerrain.generatedPoints.clear(); this->generatedTerrain.generatedPoints.shrink_to_fit(); std::vector<std::vector<glm::vec3>>().swap(this->generatedTerrain.generatedPoints);
+	this->generatedTerrain.weights.clear(); this->generatedTerrain.weights.shrink_to_fit(); std::vector<std::vector<float>>().swap(this->generatedTerrain.weights);
 	this->controlPointProperties.selectedControlPoints.clear(); this->controlPointProperties.selectedControlPoints.shrink_to_fit(); std::vector<glm::vec3*>().swap(this->controlPointProperties.selectedControlPoints);
 	this->controlPointProperties.selectedWeights.clear(); this->controlPointProperties.selectedWeights.shrink_to_fit(); std::vector<float*>().swap(this->controlPointProperties.selectedWeights);
 	this->controlPoints.gpuGeom.bind();
@@ -401,7 +406,7 @@ void FFS::resetSelectedControlPoints() {
 	for (glm::vec3* point : this->controlPointProperties.selectedControlPoints) {
 		*point = glm::vec3(point->x, 0.0f, point->z);
 	}
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::resetSelectedWeights() {
@@ -409,17 +414,17 @@ void FFS::resetSelectedWeights() {
 	for (float* w : this->controlPointProperties.selectedWeights) {
 		*w = 1.0f;
 	}
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::resetAllControlPoints() {
-	this->generatedPoints = this->generateControlPoints();
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generatedTerrain.generatedPoints = this->generateControlPoints();
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::resetAllWeights() {
-	this->weights = this->generateWeights(this->generatedPoints.size(), this->generatedPoints.size());
-	this->generateTerrain(this->generatedPoints, this->weights);
+	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints.size());
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::resetNURBSToDefaults() {

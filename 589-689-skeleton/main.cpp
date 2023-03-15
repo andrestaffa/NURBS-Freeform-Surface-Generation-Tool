@@ -238,7 +238,7 @@ int main() {
 		ImGui::NewFrame();
 		ImGui::Begin("Settings", (bool*)0, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 		ImGui::SetWindowPos(ImVec2(0, 0));
-		ImGui::SetWindowSize(ImVec2(610, 400));
+		ImGui::SetWindowSize(ImVec2(700, 400));
 		ImGui::SetWindowFontScale(1.10f);
 		if (ImGui::BeginTabBar("Tab Bar")) {
 			if (ImGui::BeginTabItem("Terrain Settings")) {
@@ -266,8 +266,8 @@ int main() {
 			if (ImGui::BeginTabItem("NURBS Surface Settings")) {
 				ImGui::PushItemWidth(200);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order u: ", &model.getTerrain()->getNURBSSettings().k_u, 2, model.getTerrain()->getGeneratedControlPoints().size());
-				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order v: ", &model.getTerrain()->getNURBSSettings().k_v, 2, model.getTerrain()->getGeneratedControlPoints()[0].size());
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order u: ", &model.getTerrain()->getNURBSSettings().k_u, 2, model.getTerrain()->getGeneratedTerrain().generatedPoints.size());
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderInt("Order v: ", &model.getTerrain()->getNURBSSettings().k_v, 2, model.getTerrain()->getGeneratedTerrain().generatedPoints[0].size());
 				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::SliderFloat("Resolution: ", &model.getTerrain()->getNURBSSettings().resolution, 10, 200);
 				ImGui::SliderFloat("Weight Change Rate: ", &model.getTerrain()->getNURBSSettings().weightRate, 1.0f, 10.0f);
 				ImGui::Checkbox("Display Control Points", &model.getTerrain()->getNURBSSettings().bDisplayControlPoints);
@@ -303,14 +303,48 @@ int main() {
 			if (ImGui::BeginTabItem("Lighting Settings")) {
 				ImGui::PushItemWidth(200);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				if (!model.hasTexture()) model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Diffuse colour", glm::value_ptr(model.getPhongLighting().diffuseCol));
-				model.getPhongLighting().bIsChanging |= ImGui::DragFloat3("Light's position", glm::value_ptr(model.getPhongLighting().lightPos));
-				model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Light's colour", glm::value_ptr(model.getPhongLighting().lightCol));
-				model.getPhongLighting().bIsChanging |= ImGui::SliderFloat("Ambient strength", &model.getPhongLighting().ambientStrength, 0.0f, 1.f);
+				if (!model.hasTexture()) model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Diffuse Colour", glm::value_ptr(model.getPhongLighting().diffuseCol));
+				model.getPhongLighting().bIsChanging |= ImGui::DragFloat3("Light Position", glm::value_ptr(model.getPhongLighting().lightPos));
+				model.getPhongLighting().bIsChanging |= ImGui::ColorEdit3("Light Colour", glm::value_ptr(model.getPhongLighting().lightCol));
+				model.getPhongLighting().bIsChanging |= ImGui::SliderFloat("Ambient Atrength", &model.getPhongLighting().ambientStrength, 0.0f, 1.f);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				model.getPhongLighting().bIsChanging |= ImGui::Checkbox("Simple wireframe", &model.getPhongLighting().simpleWireframe);
+				ImGui::InputText("Texture", &model.getTextureSettings().texturePath[0], model.getTextureSettings().texturePath.size(), ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_EnterReturnsTrue);
+				if (ImGui::IsItemClicked()) {
+					window.openFile(model.getTextureSettings().texturePath, { { L"Image files", L"*.jpg;*.png;*.bmp" } });
+					model.setTexture(model.getTextureSettings().texturePath);
+				}
+				if (ImGui::Button("Remove Texture")) model.removeTexture();
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				model.getPhongLighting().bIsChanging |= ImGui::Checkbox("Wireframe", &model.getPhongLighting().simpleWireframe);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset to Defaults")) model.resetLightingToDefaults();
+				ImGui::PopItemWidth();
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Export/Import Settings")) {
+				ImGui::PushItemWidth(200);
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::InputText("Filename", &model.getExportImportSettings().exportFileName[0], model.getExportImportSettings().exportFileName.size());
+				ImGui::InputText("Save Location", &model.getExportImportSettings().exportFileLocation[0], model.getExportImportSettings().exportFileLocation.size(), ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_EnterReturnsTrue);
+				if (ImGui::IsItemClicked()) window.openDirectory(model.getExportImportSettings().exportFileLocation);
+				for (int i = 0; i < 5; i++) ImGui::Spacing();
+				if (ImGui::Button("Export Terrain"))
+					model.getExportImportSettings().bDisplayAlert = model.exportToObj(model.getExportImportSettings().exportFileName, model.getExportImportSettings().exportFileLocation);
+				if (model.getExportImportSettings().bDisplayAlert) ImGui::OpenPopup("Saved");
+				if (ImGui::BeginPopupModal("Saved", &model.getExportImportSettings().bDisplayAlert, ImGuiWindowFlags_AlwaysAutoResize)) {
+					for (int i = 0; i < 2; i++) ImGui::Spacing();
+					ImGui::Text("Successfully saved %s.obj to\n    %s", model.getExportImportSettings().exportFileName.c_str(), model.getExportImportSettings().exportFileLocation.c_str());
+					for (int i = 0; i < 5; i++) ImGui::Spacing();
+					ImVec2 contentSize = ImGui::GetContentRegionAvail();
+					float buttonWidth = 125.0f;
+					float buttonX = contentSize.x / 2.0f - buttonWidth / 2.0f;
+					ImGui::SetCursorPosX(buttonX);
+					if (ImGui::Button("OK", ImVec2(buttonWidth, 0))) {
+						model.getExportImportSettings().bDisplayAlert = false;
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::EndPopup();
+				}
 				ImGui::PopItemWidth();
 				ImGui::EndTabItem();
 			}
@@ -322,7 +356,7 @@ int main() {
 		shader.use();
 		if (model.getPhongLighting().bIsChanging) inputManager->updateShadingUniforms(model);
 		inputManager->viewPipeline();
-		model.getTerrain()->render();
+		model.render();
 
 		glDisable(GL_FRAMEBUFFER_SRGB);
 		ImGui::Render();

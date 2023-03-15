@@ -15,6 +15,11 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
+#include <Windows.h>
+#include <ShObjIdl.h>
+#include <string>
+#include <vector>
+
 #include <memory>
 
 
@@ -82,6 +87,8 @@ public:
 	void swapBuffers() { glfwSwapBuffers(window.get()); }
 
 	void setupImGui();
+	void openDirectory(std::string& dir);
+	void openFile(std::string& fileLocation, const std::vector<COMDLG_FILTERSPEC>& fileTypes = std::vector<COMDLG_FILTERSPEC>());
 
 private:
 	std::unique_ptr<GLFWwindow, WindowDeleter> window; // owning ptr (from GLFW)
