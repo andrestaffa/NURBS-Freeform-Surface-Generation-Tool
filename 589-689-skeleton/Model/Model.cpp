@@ -1,4 +1,5 @@
 #include "Model.h"
+#include <stb/stb_image.h>
 
 Model::Model(const std::string& texturePath, const std::string& fileLocation) {
 	this->textureSettings.texturePath = texturePath;
@@ -16,7 +17,6 @@ Model::Model(const std::string& texturePath, const std::string& fileLocation) {
 	this->process.gpuGeom.setUVs(this->process.cpuGeom.uvs);
 	this->setTexture(texturePath);
 }
-
 
 void Model::render() {
 	if (this->terrain) {
@@ -39,6 +39,7 @@ void Model::setTexture(const std::string& texturePath) {
 	this->textureSettings.texturePath = texturePath;
 	this->textureSettings.texture = std::make_shared<Texture>(Texture(texturePath, GL_LINEAR));
 	this->textureSettings.texture->bind();
+	this->setTexture2DRender(texturePath);
 	this->phongLighting.bIsChanging = true;
 }
 
@@ -47,7 +48,47 @@ void Model::removeTexture() {
 	this->textureSettings.texturePath = "";
 	this->textureSettings.texture->unbind();
 	this->textureSettings.texture = nullptr;
+	glBindTexture(GL_TEXTURE_2D, this->textureSettings.texture2DRender.textureID);
+	stbi_image_free(this->textureSettings.texture2DRender.imageData);
+	this->textureSettings.texture2DRender.imageData = nullptr;
 	this->phongLighting.bIsChanging = true;
+}
+
+void Model::setTexture2DRender(const std::string& texturePath) {
+	if (!this->textureSettings.texture || this->textureSettings.texturePath.empty()) return;
+	if (this->textureSettings.texture2DRender.imageData) {
+		glBindTexture(GL_TEXTURE_2D, this->textureSettings.texture2DRender.textureID);
+		stbi_image_free(this->textureSettings.texture2DRender.imageData);
+		this->textureSettings.texture2DRender.imageData = nullptr;
+	}
+	int numComponents, width, height;
+	this->textureSettings.texture2DRender.imageData = stbi_load(texturePath.c_str(), &width, &height, &numComponents, 0);
+	GLuint format = GL_RGB;
+	switch (numComponents) {
+	case 4:
+		format = GL_RGBA;
+		break;
+	case 3:
+		format = GL_RGB;
+		break;
+	case 2:
+		format = GL_RG;
+		break;
+	case 1:
+		format = GL_RED;
+		break;
+	default:
+		break;
+	};
+	glGenTextures(1, &this->textureSettings.texture2DRender.textureID);
+	glBindTexture(GL_TEXTURE_2D, this->textureSettings.texture2DRender.textureID);
+	glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, this->textureSettings.texture2DRender.imageData);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	this->textureSettings.texture2DRender.width = width;
+	this->textureSettings.texture2DRender.width = height;
 }
 
 // Lighting Settings
@@ -56,7 +97,7 @@ void Model::resetLightingToDefaults() {
 	this->phongLighting.lightPos = glm::vec3(0.0f, 35.0f, -35.0f);
 	this->phongLighting.lightCol = glm::vec3(1.0f, 1.0f, 1.0f);
 	this->phongLighting.ambientStrength = 0.035f;
-	this->phongLighting.simpleWireframe = true;
+	this->phongLighting.simpleWireframe = false;
 	this->removeTexture();
 	this->phongLighting.bIsChanging = true;
 }

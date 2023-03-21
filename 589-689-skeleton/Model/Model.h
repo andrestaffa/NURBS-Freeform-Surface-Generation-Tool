@@ -11,13 +11,20 @@ struct PhongLighting {
 	glm::vec3 lightPos = glm::vec3(0.0f, 35.0f, -35.0f);
 	glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 1.0f);
 	float ambientStrength = 0.035f;
-	bool simpleWireframe = true;
+	bool simpleWireframe = false;
 	bool bIsChanging = false;
+};
+
+struct Texture2DRender {
+	int width, height;
+	unsigned char* imageData = nullptr;
+	GLuint textureID;
 };
 
 struct TextureSettings {
 	std::string texturePath = "";
 	std::shared_ptr<Texture> texture = nullptr;
+	Texture2DRender texture2DRender;
 };
 
 struct ExportImportSettings {
@@ -67,5 +74,10 @@ public:
 	// Export/Import Settings
 	bool exportToObj(const std::string& filename, const std::string& dir);
 	ExportImportSettings& getExportImportSettings() { return this->exportImportSettings; }
-;
+
+private:
+
+	// Texture Settings
+	void setTexture2DRender(const std::string& texturePath);
+
 };

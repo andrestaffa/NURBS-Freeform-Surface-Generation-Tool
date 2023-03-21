@@ -244,7 +244,7 @@ int main() {
 			if (ImGui::BeginTabItem("Terrain Settings")) {
 				ImGui::PushItemWidth(200);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderInt("Control Points", &model.getTerrain()->getTerrainSettings().nControlPoints, 6, 1000);
+				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderInt("Control Points", &model.getTerrain()->getTerrainSettings().nControlPoints, 6, 100);
 				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderFloat("Terrain Size", &model.getTerrain()->getTerrainSettings().terrainSize, 10.0f, 100.0f);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Random Generation")) {}
@@ -272,7 +272,7 @@ int main() {
 				ImGui::SliderFloat("Weight Change Rate: ", &model.getTerrain()->getNURBSSettings().weightRate, 1.0f, 10.0f);
 				ImGui::Checkbox("Display Control Points", &model.getTerrain()->getNURBSSettings().bDisplayControlPoints);
 				ImGui::Checkbox("Display Line Segments", &model.getTerrain()->getNURBSSettings().bDisplayLineSegments);
-				ImGui::Checkbox("Bezier", &model.getTerrain()->getNURBSSettings().bBezier);
+				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::Checkbox("Bezier", &model.getTerrain()->getNURBSSettings().bBezier);
 				ImGui::Checkbox("Closed Loop", &model.getTerrain()->getNURBSSettings().bClosedLoop);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset All Control Points")) model.getTerrain()->resetAllControlPoints();
@@ -293,7 +293,6 @@ int main() {
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				ImGui::Checkbox("Rise/Lower", &model.getTerrain()->getBrushSettings().bIsRising);
 				ImGui::Checkbox("Display Convex Hull", &model.getTerrain()->getBrushSettings().bDisplayConvexHull);
-				ImGui::Checkbox("Brushing/Add Control Point", &model.getTerrain()->getBrushSettings().bBrushingMode);
 				ImGui::Checkbox("Planar/Normal", &model.getTerrain()->getBrushSettings().bIsPlanar);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetBurshToDefaults();
@@ -313,6 +312,7 @@ int main() {
 					window.openFile(model.getTextureSettings().texturePath, { { L"Image files", L"*.jpg;*.png;*.bmp" } });
 					model.setTexture(model.getTextureSettings().texturePath);
 				}
+				if (model.hasTexture()) ImGui::Image((void*)model.getTextureSettings().texture2DRender.textureID, ImVec2(205.0f, 205.0f), ImVec2(0, 1), ImVec2(1, 0));
 				if (ImGui::Button("Remove Texture")) model.removeTexture();
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				model.getPhongLighting().bIsChanging |= ImGui::Checkbox("Wireframe", &model.getPhongLighting().simpleWireframe);

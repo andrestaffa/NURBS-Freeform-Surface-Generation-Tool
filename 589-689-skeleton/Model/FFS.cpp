@@ -2,7 +2,7 @@
 
 FFS::FFS() {
 	this->generatedTerrain.generatedPoints = this->generateControlPoints();
-	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints.size());
+	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints[0].size());
 	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
@@ -32,8 +32,10 @@ std::vector<float> FFS::generateKnotSequence(int length, int k) {
 	for (int i = 0; i < order; i++) {
 		U[i] = 0.0f;
 	}
-	for (int i = order; i < numKnots - order; i++) {
-		U[i] = (float)(i - order + 1) / (float)(numControlPoints - order + 1);
+	if (!this->nurbsSettings.bBezier) {
+		for (int i = order; i < numKnots - order; i++) {
+			U[i] = (float)(i - order + 1) / (float)(numControlPoints - order + 1);
+		}
 	}
 	for (int i = numKnots - order; i < numKnots; i++) {
 		U[i] = 1.0f;
@@ -121,6 +123,7 @@ std::vector<std::vector<glm::vec3>> FFS::generateControlPoints() {
 
 void FFS::generateTerrain(const std::vector<std::vector<glm::vec3>>& P, const std::vector<std::vector<float>>& W) {
 	this->generatedTerrain.Q.clear();
+
 	std::vector<float> U = this->generateKnotSequence(P.size(), this->nurbsSettings.k_u);
 	std::vector<float> V = this->generateKnotSequence(P[0].size(), this->nurbsSettings.k_v);
 
@@ -306,8 +309,6 @@ std::vector<std::string> FFS::getExportObjFormat() {
 	return objs;
 }
 
-// Ground Plane Detection of Control Points (NEED MAKE MUCH MORE EFFICIENT ALGORITHM)
-
 void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
 	if (this->controlPoints.cpuGeom.verts.empty()) return;
 	this->controlPointProperties.selectedControlPoints.clear();
@@ -369,7 +370,7 @@ void FFS::controlPointsChangeColor(const glm::vec3& mousePosition3D, const glm::
 void FFS::createTerrain() {
 	this->resetTerrain();
 	this->generatedTerrain.generatedPoints = this->generateControlPoints();
-	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints.size());
+	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints[0].size());
 	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
@@ -432,8 +433,8 @@ void FFS::resetNURBSToDefaults() {
 	this->nurbsSettings.k_v = 3;
 	this->nurbsSettings.resolution = 100.0f;
 	this->nurbsSettings.weightRate = 1.0f;
-	this->nurbsSettings.bDisplayControlPoints = true;
-	this->nurbsSettings.bDisplayLineSegments = true;
+	this->nurbsSettings.bDisplayControlPoints = false;
+	this->nurbsSettings.bDisplayLineSegments = false;
 	this->nurbsSettings.bBezier = false;
 	this->nurbsSettings.bClosedLoop = false;
 	this->nurbsSettings.bIsChanging = true;
@@ -446,6 +447,5 @@ void FFS::resetBurshToDefaults() {
 	this->brushSettings.brushRateScale = 1.0f;
 	this->brushSettings.bIsRising = true;
 	this->brushSettings.bDisplayConvexHull = false;
-	this->brushSettings.bBrushingMode = true;
 	this->brushSettings.bIsPlanar = true;
 }

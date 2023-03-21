@@ -36,8 +36,8 @@ struct NURBSSettings {
 	int k_v = 3;
 	float resolution = 100.0f;
 	float weightRate = 1.0f;
-	bool bDisplayControlPoints = true;
-	bool bDisplayLineSegments = true;
+	bool bDisplayControlPoints = false;
+	bool bDisplayLineSegments = false;
 	bool bBezier = false;
 	bool bClosedLoop = false;
 	bool bIsChanging = false;
@@ -48,7 +48,6 @@ struct BrushSettings {
 	float brushRateScale = 1.0f;
 	bool bIsRising = true;
 	bool bDisplayConvexHull = false;
-	bool bBrushingMode = true;
 	bool bIsPlanar = true;
 };
 
