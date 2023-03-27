@@ -73,11 +73,15 @@ public:
 
 	// Export/Import Settings
 	bool exportToObj(const std::string& filename, const std::string& dir);
+	bool importFromNObj(const std::string& path);
 	ExportImportSettings& getExportImportSettings() { return this->exportImportSettings; }
 
 private:
 
 	// Texture Settings
 	void setTexture2DRender(const std::string& texturePath);
+
+	// Export/Import Settings
+	bool exportFileFormat(const char* format, const std::vector<std::string>& text, const std::string& filename, const std::string& dir);
 
 };

@@ -333,7 +333,7 @@ int main() {
 				if (model.getExportImportSettings().bDisplayAlert) ImGui::OpenPopup("Saved");
 				if (ImGui::BeginPopupModal("Saved", &model.getExportImportSettings().bDisplayAlert, ImGuiWindowFlags_AlwaysAutoResize)) {
 					for (int i = 0; i < 2; i++) ImGui::Spacing();
-					ImGui::Text("Successfully saved %s.obj to\n    %s", model.getExportImportSettings().exportFileName.c_str(), model.getExportImportSettings().exportFileLocation.c_str());
+					ImGui::Text("Successfully saved %s.obj and %s.nobj to\n           %s", model.getExportImportSettings().exportFileName.c_str(), model.getExportImportSettings().exportFileName.c_str(), model.getExportImportSettings().exportFileLocation.c_str());
 					for (int i = 0; i < 5; i++) ImGui::Spacing();
 					ImVec2 contentSize = ImGui::GetContentRegionAvail();
 					float buttonWidth = 125.0f;
@@ -344,6 +344,10 @@ int main() {
 						ImGui::CloseCurrentPopup();
 					}
 					ImGui::EndPopup();
+				}
+				if (ImGui::Button("Import Terrain")) {
+					window.openFile(model.getExportImportSettings().importFileLocation, { { L"NUBRS files", L"*.nobj" } });
+					model.importFromNObj(model.getExportImportSettings().importFileLocation);
 				}
 				ImGui::PopItemWidth();
 				ImGui::EndTabItem();

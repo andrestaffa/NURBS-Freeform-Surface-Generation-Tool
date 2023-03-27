@@ -309,6 +309,51 @@ std::vector<std::string> FFS::getExportObjFormat() {
 	return objs;
 }
 
+std::vector<std::string> FFS::getExportNObjFormat() {
+	std::vector<std::string> result;
+	for (int i = 0; i < this->generatedTerrain.generatedPoints.size(); ++i) {
+		for (int j = 0; j < this->generatedTerrain.generatedPoints[i].size(); ++j) {
+			const glm::vec3& point = this->generatedTerrain.generatedPoints[i][j];
+			const float& weight = this->generatedTerrain.weights[i][j];
+			std::string controlPointStr = "cp " + std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " " + std::to_string(weight);
+			result.push_back(controlPointStr);
+		}
+	}
+	std::string kUStr = "ku " + std::to_string(this->nurbsSettings.k_u);
+	std::string kVStr = "kv " + std::to_string(this->nurbsSettings.k_v);
+	std::string resolutionStr = "r " + std::to_string(this->nurbsSettings.resolution);
+	std::string numberOfControlPointsStr = "nCp " + std::to_string(this->terrainSettings.nControlPoints);
+	std::string terrainSizeStr = "tz " + std::to_string(this->terrainSettings.terrainSize);
+	result.push_back(kUStr);
+	result.push_back(kVStr);
+	result.push_back(resolutionStr);
+	result.push_back(numberOfControlPointsStr);
+	result.push_back(terrainSizeStr);
+	return result;
+}
+
+bool FFS::getImportNObjFormat(const ImportNOBJSettings& settings) {
+	if (settings.controlPoints.empty()) return false;
+	this->resetTerrain();
+	int size = settings.controlPoints.size() / settings.nControlPoints;
+	std::vector<std::vector<glm::vec3>> controlPoints(size, std::vector<glm::vec3>(size));
+	std::vector<std::vector<float>> weights(size, std::vector<float>(size));
+	for (int i = 0; i < settings.controlPoints.size(); ++i)
+		controlPoints[i / size][i % size] = settings.controlPoints[i];
+	for (int i = 0; i < settings.weights.size(); ++i)
+		weights[i / size][i % size] = settings.weights[i];
+	this->terrainSettings.nControlPoints = settings.nControlPoints;
+	this->terrainSettings.terrainSize = settings.terrainSize;
+	this->generatedTerrain.generatedPoints = controlPoints;
+	this->generatedTerrain.weights = weights;
+	this->nurbsSettings.k_u = settings.k_u;
+	this->nurbsSettings.k_v = settings.k_v;
+	this->nurbsSettings.resolution = settings.resolution;
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
+	return true;
+}
+
+
 void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
 	if (this->controlPoints.cpuGeom.verts.empty()) return;
 	this->controlPointProperties.selectedControlPoints.clear();

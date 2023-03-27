@@ -103,19 +103,95 @@ void Model::resetLightingToDefaults() {
 }
 
 // Export/Import Settings
-bool Model::exportToObj(const std::string& filename, const std::string& dir) {
+bool Model::exportFileFormat(const char* format, const std::vector<std::string>& text, const std::string& filename, const std::string& dir) {
 	if (dir.empty()) return false;
-	if (!this->terrain) return false;
-	std::vector<std::string> objs = this->terrain->getExportObjFormat();
 	char fullpath[1024];
-	sprintf_s(fullpath, sizeof(fullpath), "%s/%s.obj", dir.c_str(), filename.c_str());
+	sprintf_s(fullpath, sizeof(fullpath), format, dir.c_str(), filename.c_str());
 	FILE* file = fopen(fullpath, "w");
 	if (file) {
-		for (const std::string& objStr : objs) {
+		for (const std::string& objStr : text) {
 			fwrite(objStr.c_str(), sizeof(char), objStr.length(), file);
 			fputc('\n', file);
 		}
 		fclose(file);
 	}
 	return file != nullptr;
+}
+
+bool Model::exportToObj(const std::string& filename, const std::string& dir) {
+	if (!this->terrain) return false;
+
+	std::vector<std::string> nObjs = this->terrain->getExportNObjFormat();
+	if (!this->textureSettings.texturePath.empty()) nObjs.push_back("texture " + this->textureSettings.texturePath);
+	std::vector<std::string> objs = this->terrain->getExportObjFormat();
+
+	bool nurbsObjFileFlag = this->exportFileFormat("%s/%s.nobj", nObjs, filename, dir);
+	bool objFileFlag = this->exportFileFormat("%s/%s.obj", objs, filename, dir);
+
+	return nurbsObjFileFlag && objFileFlag;
+}
+
+bool Model::importFromNObj(const std::string& path) {
+	std::vector<glm::vec3> controlPoints;
+	std::vector<float> weights;
+	int k_u = 3, k_v = 3;
+	float resolution = 100.0f;
+	int nControlPoints = 20;
+	float terrainSize = 10.0f;
+	std::string texturePath(200, '\0');
+
+	FILE* file = fopen(path.c_str(), "r");
+	if (file == NULL) {
+		Log::error("Cannot open File");
+		return false;
+	}
+
+	int val = -1;
+	while (true) {
+		char lineHeader[128];
+		int res = fscanf(file, "%s", lineHeader);
+		if (res == EOF)
+			break;
+		if (strcmp(lineHeader, "cp") == 0) {
+			glm::vec3 controlPoint;
+			float weight;
+			val = fscanf(file, "%f %f %f %f\n", &controlPoint.x, &controlPoint.y, &controlPoint.z, &weight);
+			controlPoints.push_back(controlPoint);
+			weights.push_back(weight);
+		} else if (strcmp(lineHeader, "ku") == 0) {
+			val = fscanf(file, "%d\n", &k_u);
+		} else if (strcmp(lineHeader, "kv") == 0) {
+			val = fscanf(file, "%d\n", &k_v);
+		} else if (strcmp(lineHeader, "r") == 0) {
+			val = fscanf(file, "%f\n", &resolution);
+		} else if (strcmp(lineHeader, "nCp") == 0) {
+			val = fscanf(file, "%d\n", &nControlPoints);
+		} else if (strcmp(lineHeader, "tz") == 0) {
+			val = fscanf(file, "%f\n", &terrainSize);
+		} else if (strcmp(lineHeader, "texture") == 0) {
+			fgets(texturePath.data(), texturePath.size(), file);
+			size_t len = strlen(texturePath.data());
+			if (len > 0 && texturePath.data()[len - 1] == '\n') {
+				texturePath.data()[len - 1] = '\0';
+			}
+		}
+	}
+	texturePath.resize(strlen(texturePath.data()));
+	texturePath.erase(0, 1);
+
+	ImportNOBJSettings settings;
+	settings.controlPoints = controlPoints;
+	settings.weights = weights;
+	settings.k_u = k_u;
+	settings.k_v = k_v;
+	settings.resolution = resolution;
+	settings.nControlPoints = nControlPoints;
+	settings.terrainSize = terrainSize;
+
+	bool success = this->terrain->getImportNObjFormat(settings);
+	if (success) {
+		this->textureSettings.texturePath = texturePath;
+		this->setTexture(this->textureSettings.texturePath);
+	}
+	return false;
 }

@@ -51,6 +51,15 @@ struct BrushSettings {
 	bool bIsPlanar = true;
 };
 
+struct ImportNOBJSettings {
+	std::vector<glm::vec3> controlPoints;
+	std::vector<float> weights;
+	int k_u = 3, k_v = 3;
+	float resolution = 100.0f;
+	int nControlPoints = 20;
+	float terrainSize = 10.0f;
+};
+
 class FFS {
 
 private:
@@ -148,5 +157,9 @@ public:
 
 	// .obj Formatting
 	std::vector<std::string> getExportObjFormat();
+
+	// .nobj Formatting
+	std::vector<std::string> getExportNObjFormat();
+	bool getImportNObjFormat(const ImportNOBJSettings& settings);
 
 };
