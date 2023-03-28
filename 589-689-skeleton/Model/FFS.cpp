@@ -1,5 +1,8 @@
 #include "FFS.h"
 
+#include <random>
+#include <glm/gtc/noise.hpp>
+
 FFS::FFS() {
 	this->generatedTerrain.generatedPoints = this->generateControlPoints();
 	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints[0].size());
@@ -119,6 +122,42 @@ std::vector<std::vector<glm::vec3>> FFS::generateControlPoints() {
 	}
 
 	return P;
+}
+
+void FFS::generateRandomTerrain() {
+	this->resetTerrain();
+	this->generatedTerrain.generatedPoints = this->generateControlPoints();
+	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints[0].size());
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
+
+	std::vector<std::vector<glm::vec3>> newPoints(this->generatedTerrain.generatedPoints.size(), std::vector<glm::vec3>(this->generatedTerrain.generatedPoints[0].size()));
+
+	float skipProbability = this->randomGenerationSettings.skipProbability;
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> heightDist(this->randomGenerationSettings.minHeight, this->randomGenerationSettings.maxHeight);
+	std::uniform_real_distribution<float> skipDist(0.0f, 1.f);
+
+	for (size_t i = 0; i < this->generatedTerrain.generatedPoints.size(); ++i) {
+		for (size_t j = 0; j < this->generatedTerrain.generatedPoints[i].size(); ++j) {
+			if ((i == 0 || i == this->generatedTerrain.generatedPoints.size() - 1 || j == 0 || j == this->generatedTerrain.generatedPoints[i].size() - 1)) {
+				newPoints[i][j] = this->generatedTerrain.generatedPoints[i][j];
+				continue;
+			}
+			if (skipDist(gen) < skipProbability) {
+				newPoints[i][j] = this->generatedTerrain.generatedPoints[i][j];
+				continue;
+			}
+			glm::vec3 controlPoint = this->generatedTerrain.generatedPoints[i][j];
+			float perlinValue = glm::perlin(glm::vec2(controlPoint.x, controlPoint.z));
+			float mappedPerlinValue = heightDist(gen) * ((perlinValue + 1) / 2);
+			glm::vec3 newPoint = glm::vec3(controlPoint.x, controlPoint.y + mappedPerlinValue, controlPoint.z);
+			newPoints[i][j] = newPoint;
+		}
+	}
+	this->generatedTerrain.generatedPoints = newPoints;
+	this->generatedTerrain.weights = this->generateWeights(this->generatedTerrain.generatedPoints.size(), this->generatedTerrain.generatedPoints[0].size());
+	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
 void FFS::generateTerrain(const std::vector<std::vector<glm::vec3>>& P, const std::vector<std::vector<float>>& W) {
@@ -493,4 +532,20 @@ void FFS::resetBurshToDefaults() {
 	this->brushSettings.bIsRising = true;
 	this->brushSettings.bDisplayConvexHull = false;
 	this->brushSettings.bIsPlanar = true;
+}
+
+// Random Generation Settings
+void FFS::resetRandomGenerationSettings() {
+	this->randomGenerationSettings.skipProbability = 0.70f;
+	this->randomGenerationSettings.minHeight = 0.0f;
+	this->randomGenerationSettings.maxHeight = 4.0f;
+}
+
+void FFS::resetAllSettings() {
+	this->resetNURBSToDefaults();
+	this->resetAllWeights();
+	this->resetAllControlPoints();
+	this->resetTerrainToDefaults();
+	this->resetBurshToDefaults();
+	this->resetRandomGenerationSettings();
 }

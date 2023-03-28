@@ -73,13 +73,21 @@ public:
 		this->screenPos.x = (float)xpos;
 		this->screenPos.y = (float)ypos;
 		if (this->onKeyHeld(GLFW_MOUSE_BUTTON_RIGHT)) {
-			this->camera.handleRotation(xpos - this->mouseOldX, ypos - this->mouseOldY);
+			if (this->camera.getCameraType() == CameraType::panMode) {
+				this->camera.handleRotation(xpos - this->mouseOldX, ypos - this->mouseOldY);
+			} else if (this->camera.getCameraType() == CameraType::rotationalMode) {
+				camera.incrementTheta(ypos - this->mouseOldY);
+				camera.incrementPhi(xpos - this->mouseOldX);
+			}
 		}
 		this->mouseOldX = xpos;
 		this->mouseOldY = ypos;
 	}
 	virtual void scrollCallback(double xoffset, double yoffset) {
 		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) return;
+		if (this->camera.getCameraType() == CameraType::rotationalMode) {
+			camera.incrementR(yoffset);
+		}
 		this->bIsScrollingUp = (yoffset > 0);
 		this->bIsScrollingDown = (yoffset < 0);
 	}
@@ -146,7 +154,7 @@ public:
 
 		glm::mat4 projectionMatrix = this->camera.getPerspective();
 		glm::mat4 viewMatrix = this->camera.getView();
-		glm::vec3 cameraPosition = this->camera.getOrientation().position;
+		glm::vec3 cameraPosition = (this->camera.getCameraType() == CameraType::panMode) ? this->camera.getOrientation().position : this->camera.getRotationalCameraPos();
 
 		float x = (2.0f * this->screenPos.x) / width - 1.0f;
 		float y = 1.0f - (2.0f * this->screenPos.y) / height;
@@ -244,21 +252,25 @@ int main() {
 			if (ImGui::BeginTabItem("Terrain Settings")) {
 				ImGui::PushItemWidth(200);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::Text("Basic Terrain Settings:");
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderInt("Control Points", &model.getTerrain()->getTerrainSettings().nControlPoints, 6, 100);
 				model.getTerrain()->getTerrainSettings().bIsChanging |= ImGui::SliderFloat("Terrain Size", &model.getTerrain()->getTerrainSettings().terrainSize, 10.0f, 100.0f);
-				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				if (ImGui::Button("Random Generation")) {}
 				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetTerrainToDefaults();
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::Text("Random Terrain Generation Settings:");
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::SliderFloat("Skip Probability", &model.getTerrain()->getRandomGenerationSettings().skipProbability, 0.0f, 1.0f);
+				ImGui::SliderFloat("Min Height", &model.getTerrain()->getRandomGenerationSettings().minHeight, -10.0f, model.getTerrain()->getRandomGenerationSettings().maxHeight);
+				ImGui::SliderFloat("Max Height", &model.getTerrain()->getRandomGenerationSettings().maxHeight, model.getTerrain()->getRandomGenerationSettings().minHeight, 30.0f);
+				if (ImGui::Button("Random Generation")) model.getTerrain()->generateRandomTerrain();
+				if (ImGui::Button("Reset RNG Settings")) model.getTerrain()->resetRandomGenerationSettings();
 				for (int i = 0; i < 5; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset All")) {
-					model.getTerrain()->resetNURBSToDefaults();
-					model.getTerrain()->resetAllWeights();
-					model.getTerrain()->resetAllControlPoints();
-					model.getTerrain()->resetTerrainToDefaults();
-					model.getTerrain()->resetBurshToDefaults();
+					model.getTerrain()->resetAllSettings();
 					model.resetLightingToDefaults();
 				}
-				for (int i = 0; i < 5; i++) ImGui::Spacing();
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				ImGui::Text("Average %.1f ms/frame (%.1f fps)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 				ImGui::PopItemWidth();
 				ImGui::EndTabItem();
@@ -316,6 +328,7 @@ int main() {
 				if (ImGui::Button("Remove Texture")) model.removeTexture();
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				model.getPhongLighting().bIsChanging |= ImGui::Checkbox("Wireframe", &model.getPhongLighting().simpleWireframe);
+				ImGui::Checkbox("Pan/Sphere", &inputManager->getCamera().bIsCameraChanging);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset to Defaults")) model.resetLightingToDefaults();
 				ImGui::PopItemWidth();

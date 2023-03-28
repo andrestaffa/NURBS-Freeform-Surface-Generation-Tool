@@ -31,6 +31,12 @@ struct TerrainSettings {
 	bool bIsChanging = false;
 };
 
+struct RandomGenerationSettings {
+	float skipProbability = 0.70f;
+	float minHeight = 0.0f;
+	float maxHeight = 4.0f;
+};
+
 struct NURBSSettings {
 	int k_u = 3;
 	int k_v = 3;
@@ -77,6 +83,8 @@ private:
 
 	// Terrain Settings
 	TerrainSettings terrainSettings;
+	// Random Generation Settings
+	RandomGenerationSettings randomGenerationSettings;
 	// NURBS Settings
 	NURBSSettings nurbsSettings;
 	// Brush Settings
@@ -161,5 +169,14 @@ public:
 	// .nobj Formatting
 	std::vector<std::string> getExportNObjFormat();
 	bool getImportNObjFormat(const ImportNOBJSettings& settings);
+
+	// Random Generation
+	void generateRandomTerrain();
+	void resetRandomGenerationSettings();
+	RandomGenerationSettings& getRandomGenerationSettings() { return this->randomGenerationSettings; }
+
+
+	// Reset All Settings
+	void resetAllSettings();
 
 };
