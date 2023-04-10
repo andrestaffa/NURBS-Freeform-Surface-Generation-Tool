@@ -44,8 +44,8 @@ public:
 		bIsScrollingDown(false)
 	{
 		this->pressedKeys = std::unordered_map<int, bool>({
-			{GLFW_KEY_R, false},
 			{GLFW_KEY_E, false},
+			{GLFW_KEY_R, false}
 		});
 		this->heldKeys = std::unordered_map <int, bool>({
 			{GLFW_KEY_W, false},
@@ -190,7 +190,7 @@ int main() {
 	Log::debug("Starting main");
 
 	glfwInit();
-	Window window(2560, 1440, "CPSC 589/689 - Project");
+	Window window(1920, 1080, "CPSC 589/689 - Project");
 	ShaderProgram shader("shaders/test.vert", "shaders/test.frag");
 
 	std::shared_ptr<InputManager> inputManager = std::make_shared<InputManager>(shader, window.getWidth(), window.getHeight());
@@ -285,7 +285,6 @@ int main() {
 				ImGui::Checkbox("Display Control Points", &model.getTerrain()->getNURBSSettings().bDisplayControlPoints);
 				ImGui::Checkbox("Display Line Segments", &model.getTerrain()->getNURBSSettings().bDisplayLineSegments);
 				model.getTerrain()->getNURBSSettings().bIsChanging |= ImGui::Checkbox("Bezier", &model.getTerrain()->getNURBSSettings().bBezier);
-				ImGui::Checkbox("Closed Loop", &model.getTerrain()->getNURBSSettings().bClosedLoop);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset All Control Points")) model.getTerrain()->resetAllControlPoints();
 				if (ImGui::Button("Reset All Weights")) model.getTerrain()->resetAllWeights();
@@ -304,8 +303,7 @@ int main() {
 				ImGui::SliderFloat("Brush Speed: ", &model.getTerrain()->getBrushSettings().brushRateScale, 0.5f, 10.0f);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				ImGui::Checkbox("Rise/Lower", &model.getTerrain()->getBrushSettings().bIsRising);
-				ImGui::Checkbox("Display Convex Hull", &model.getTerrain()->getBrushSettings().bDisplayConvexHull);
-				ImGui::Checkbox("Planar/Normal", &model.getTerrain()->getBrushSettings().bIsPlanar);
+				ImGui::Checkbox("Display Bursh Area", &model.getTerrain()->getBrushSettings().bDisplayBrushArea);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetBurshToDefaults();
 				ImGui::PopItemWidth();
@@ -337,8 +335,8 @@ int main() {
 			if (ImGui::BeginTabItem("Export/Import Settings")) {
 				ImGui::PushItemWidth(200);
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
-				ImGui::InputText("Filename", &model.getExportImportSettings().exportFileName[0], model.getExportImportSettings().exportFileName.size());
-				ImGui::InputText("Save Location", &model.getExportImportSettings().exportFileLocation[0], model.getExportImportSettings().exportFileLocation.size(), ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_EnterReturnsTrue);
+				ImGui::InputText("Export Filename", &model.getExportImportSettings().exportFileName[0], model.getExportImportSettings().exportFileName.size());
+				ImGui::InputText("Export Save Location", &model.getExportImportSettings().exportFileLocation[0], model.getExportImportSettings().exportFileLocation.size(), ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_EnterReturnsTrue);
 				if (ImGui::IsItemClicked()) window.openDirectory(model.getExportImportSettings().exportFileLocation);
 				for (int i = 0; i < 5; i++) ImGui::Spacing();
 				if (ImGui::Button("Export Terrain"))
@@ -362,6 +360,22 @@ int main() {
 					window.openFile(model.getExportImportSettings().importFileLocation, { { L"NUBRS files", L"*.nobj" } });
 					model.importFromNObj(model.getExportImportSettings().importFileLocation);
 				}
+				ImGui::PopItemWidth();
+				ImGui::EndTabItem();
+			}
+			if (ImGui::BeginTabItem("Control Settings")) {
+				ImGui::PushItemWidth(200);
+				for (int i = 0; i < 4; i++) ImGui::Spacing();
+				ImGui::Text("Hold RMB --- Pan camera / Rotate camera");
+				ImGui::Text("Hold LMB --- Raise/Lower Terrain");
+				ImGui::Text("W --- Move camera up");
+				ImGui::Text("A --- Move camera left");
+				ImGui::Text("S --- Move camera down");
+				ImGui::Text("D --- Move camera right");
+				ImGui::Text("E --- Reset selected control points");
+				ImGui::Text("R --- Reset selected control point weights");
+				for (int i = 0; i < 5; i++) ImGui::Spacing();
+				if (ImGui::Button("Tutorial Video")) window.openTutorialVideo();
 				ImGui::PopItemWidth();
 				ImGui::EndTabItem();
 			}

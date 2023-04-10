@@ -94,7 +94,7 @@ void Model::setTexture2DRender(const std::string& texturePath) {
 // Lighting Settings
 void Model::resetLightingToDefaults() {
 	this->phongLighting.diffuseCol = glm::vec3(90.0f / 255.0f, 87.0f / 255.0f, 87.0f / 255.0f);
-	this->phongLighting.lightPos = glm::vec3(0.0f, 35.0f, -35.0f);
+	this->phongLighting.lightPos = glm::vec3(-10.0f, 35.0f, -10.0f);
 	this->phongLighting.lightCol = glm::vec3(1.0f, 1.0f, 1.0f);
 	this->phongLighting.ambientStrength = 0.035f;
 	this->phongLighting.simpleWireframe = false;

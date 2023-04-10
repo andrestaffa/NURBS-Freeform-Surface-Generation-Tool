@@ -12,8 +12,8 @@ FFS::FFS() {
 void FFS::render() {
 	if (this->terrainSettings.bIsChanging) this->createTerrain();
 	if (this->nurbsSettings.bIsChanging) this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
+	glPointSize(10.0f);
 	if (this->nurbsSettings.bDisplayControlPoints) {
-		glPointSize(10.0f);
 		this->controlPoints.gpuGeom.bind();
 		glDrawArrays(GL_POINTS, 0, GLsizei(this->controlPoints.cpuGeom.verts.size()));
 	}
@@ -21,6 +21,10 @@ void FFS::render() {
 	if (this->nurbsSettings.bDisplayLineSegments) {
 		this->nurbsLines.gpuGeom.bind();
 		glDrawArrays(GL_LINE_STRIP, 0, GLsizei(this->nurbsLines.cpuGeom.verts.size()));
+	}
+	if (this->brushSettings.bDisplayBrushArea) {
+		this->selectedArea.gpuGeom.bind();
+		glDrawArrays(GL_POINTS, 0, GLsizei(this->selectedArea.cpuGeom.verts.size()));
 	}
 	this->freeFormSurface.gpuGeom.bind();
 	glDrawArrays(GL_TRIANGLES, 0, GLsizei(this->freeFormSurface.cpuGeom.verts.size()));
@@ -397,6 +401,8 @@ void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
 	if (this->controlPoints.cpuGeom.verts.empty()) return;
 	this->controlPointProperties.selectedControlPoints.clear();
 	this->controlPointProperties.selectedWeights.clear();
+	this->selectedArea.cpuGeom.verts.clear();
+	this->selectedArea.cpuGeom.cols.clear();
 	for (size_t i = 0; i < this->generatedTerrain.generatedPoints.size(); i++) {
 		for (size_t j = 0; j < this->generatedTerrain.generatedPoints[i].size(); j++) {
 			const glm::vec3* pointPos = &this->generatedTerrain.generatedPoints[i][j];
@@ -408,6 +414,11 @@ void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
 			}
 		}
 	}
+	this->selectedArea.gpuGeom.bind();
+	for (const glm::vec3* p : this->controlPointProperties.selectedControlPoints) this->selectedArea.cpuGeom.verts.push_back(*p);
+	this->selectedArea.cpuGeom.cols.resize(this->selectedArea.cpuGeom.verts.size(), glm::vec3(0.0f, 0.0f, 1.0f));
+	this->selectedArea.gpuGeom.setVerts(this->selectedArea.cpuGeom.verts);
+	this->selectedArea.gpuGeom.setCols(this->selectedArea.cpuGeom.cols);
 	this->controlPointsChangeColor(mousePosition3D, glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
@@ -479,7 +490,7 @@ void FFS::resetTerrain() {
 
 void FFS::resetTerrainToDefaults() {
 	this->resetTerrain();
-	this->terrainSettings.nControlPoints = 20;
+	this->terrainSettings.nControlPoints = 55;
 	this->terrainSettings.terrainSize = 10.0f;
 	this->terrainSettings.bIsChanging = true;
 }
@@ -520,7 +531,6 @@ void FFS::resetNURBSToDefaults() {
 	this->nurbsSettings.bDisplayControlPoints = false;
 	this->nurbsSettings.bDisplayLineSegments = false;
 	this->nurbsSettings.bBezier = false;
-	this->nurbsSettings.bClosedLoop = false;
 	this->nurbsSettings.bIsChanging = true;
 }
 
@@ -530,8 +540,7 @@ void FFS::resetBurshToDefaults() {
 	this->brushSettings.brushRadius = 1.5f;
 	this->brushSettings.brushRateScale = 1.0f;
 	this->brushSettings.bIsRising = true;
-	this->brushSettings.bDisplayConvexHull = false;
-	this->brushSettings.bIsPlanar = true;
+	this->brushSettings.bDisplayBrushArea = true;
 }
 
 // Random Generation Settings

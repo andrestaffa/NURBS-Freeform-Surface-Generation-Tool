@@ -124,6 +124,14 @@ foreach(file ${files_m})
 	configure_file(${file} models/${fileName} COPYONLY)
 endforeach()
 
+# Do the same for Tutorial Video
+file(GLOB_RECURSE files_v tutorial-video/*)
+foreach (file ${files_v})
+	file(RELATIVE_PATH fileName ${CMAKE_CURRENT_SOURCE_DIR}/tutorial-video/ ${file})
+	configure_file(${file} tutorial-video/${fileName} COPYONLY)
+endforeach()
+	
+
 add_executable(${APP_NAME} ${SOURCES}  "589-689-skeleton/Model/FFS.cpp" "589-689-skeleton/Model/FFS.h"   "589-689-skeleton/Model/Model.h" "589-689-skeleton/Model/Model.cpp")
 target_include_directories(${APP_NAME} PRIVATE ${INCLUDES})
 target_link_libraries(${APP_NAME} ${LIBRARIES})

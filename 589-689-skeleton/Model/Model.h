@@ -8,7 +8,7 @@
 
 struct PhongLighting {
 	glm::vec3 diffuseCol = glm::vec3(90.0f/255.0f, 87.0f/255.0f, 87.0f/255.0f);
-	glm::vec3 lightPos = glm::vec3(0.0f, 35.0f, -35.0f);
+	glm::vec3 lightPos = glm::vec3(-10.0f, 35.0f, -10.0f);
 	glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 1.0f);
 	float ambientStrength = 0.035f;
 	bool simpleWireframe = false;

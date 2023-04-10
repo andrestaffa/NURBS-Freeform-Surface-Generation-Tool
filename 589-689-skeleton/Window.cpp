@@ -185,6 +185,16 @@ void Window::openFile(std::string& fileLocation, const std::vector<COMDLG_FILTER
 	}
 }
 
+bool Window::openTutorialVideo() {
+	const char* videoFilePath = "tutorial-video\\Tutorial_Video.mp4";
+	HINSTANCE result = ShellExecute(NULL, "open", videoFilePath, NULL, NULL, SW_SHOW);
+	if ((int)result <= 32) {
+		std::cerr << "Error opening the file: " << videoFilePath << std::endl;
+		return false;
+	}
+	return true;
+}
+
 void Window::connectCallbacks() {
 	// set userdata of window to point to the object that carries out the callbacks
 	glfwSetWindowUserPointer(window.get(), callbacks.get());

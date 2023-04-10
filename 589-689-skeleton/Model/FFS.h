@@ -26,7 +26,7 @@ struct ControlPointProperties {
 };
 
 struct TerrainSettings {
-	int nControlPoints = 20;
+	int nControlPoints = 55;
 	float terrainSize = 10.0f;
 	bool bIsChanging = false;
 };
@@ -45,7 +45,6 @@ struct NURBSSettings {
 	bool bDisplayControlPoints = false;
 	bool bDisplayLineSegments = false;
 	bool bBezier = false;
-	bool bClosedLoop = false;
 	bool bIsChanging = false;
 };
 
@@ -53,8 +52,7 @@ struct BrushSettings {
 	float brushRadius = 1.5f;
 	float brushRateScale = 1.0f;
 	bool bIsRising = true;
-	bool bDisplayConvexHull = false;
-	bool bIsPlanar = true;
+	bool bDisplayBrushArea = true;
 };
 
 struct ImportNOBJSettings {
@@ -74,6 +72,7 @@ private:
 	Process controlPoints;
 	Process freeFormSurface;
 	Process nurbsLines;
+	Process selectedArea;
 
 	// Generated Control Points, Weights & Curve
 	GeneratedTerrain generatedTerrain;

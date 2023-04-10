@@ -89,6 +89,7 @@ public:
 	void setupImGui();
 	void openDirectory(std::string& dir);
 	void openFile(std::string& fileLocation, const std::vector<COMDLG_FILTERSPEC>& fileTypes = std::vector<COMDLG_FILTERSPEC>());
+	bool openTutorialVideo();
 
 private:
 	std::unique_ptr<GLFWwindow, WindowDeleter> window; // owning ptr (from GLFW)
