@@ -26,7 +26,7 @@ struct ControlPointProperties {
 };
 
 struct TerrainSettings {
-	int nControlPoints = 55;
+	int nControlPoints = 20;
 	float terrainSize = 10.0f;
 	bool bIsChanging = false;
 };

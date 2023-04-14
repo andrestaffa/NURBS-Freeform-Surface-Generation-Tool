@@ -57,19 +57,28 @@ public:
 	}
 
 	virtual void keyCallback(int key, int scancode, int action, int mods) {
-		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) return;
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
+			for (auto& it : this->heldKeys) it.second = false;
+			return;
+		}
 		this->pressedKeys[key] = action == GLFW_PRESS;
 		this->heldKeys[key] = action == GLFW_REPEAT || action == GLFW_PRESS;
 	}
 
 	virtual void mouseButtonCallback(int button, int action, int mods) {
-		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) return;
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
+			for (auto& it : this->heldKeys) it.second = false;
+			return;
+		}
 		this->pressedKeys[button] = action == GLFW_PRESS;
 		this->heldKeys[button] = action == GLFW_PRESS;
 	}	
 
 	virtual void cursorPosCallback(double xpos, double ypos) {
-		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) return;
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
+			for (auto& it : this->heldKeys) it.second = false;
+			return;
+		}
 		this->screenPos.x = (float)xpos;
 		this->screenPos.y = (float)ypos;
 		if (this->onKeyHeld(GLFW_MOUSE_BUTTON_RIGHT)) {
@@ -84,7 +93,10 @@ public:
 		this->mouseOldY = ypos;
 	}
 	virtual void scrollCallback(double xoffset, double yoffset) {
-		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) return;
+		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow)) {
+			for (auto& it : this->heldKeys) it.second = false;
+			return;
+		}
 		if (this->camera.getCameraType() == CameraType::rotationalMode) {
 			camera.incrementR(yoffset);
 		}
@@ -203,6 +215,13 @@ int main() {
 	inputManager->updateShadingUniforms(model);
 
 	while (!window.shouldClose()) {
+
+		// Calculate time since last frame
+		double currentTime = glfwGetTime();
+		window.getFrameRateLimitSettings().deltaTime += currentTime - window.getFrameRateLimitSettings().lastTime;
+		window.getFrameRateLimitSettings().lastTime = currentTime;
+		if (window.getFrameRateLimitSettings().deltaTime < window.getFrameRateLimitSettings().maxPeriod) continue;
+
 		inputManager->refreshInput();
 		glfwPollEvents();
 
@@ -393,6 +412,7 @@ int main() {
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		window.swapBuffers();
+		window.getFrameRateLimitSettings().deltaTime -= window.getFrameRateLimitSettings().maxPeriod;
 	}
 
 	ImGui_ImplOpenGL3_Shutdown();

@@ -59,6 +59,13 @@ struct WindowDeleter {
 	}
 };
 
+struct FrameRateLimitSettings {
+	double lastTime = glfwGetTime();
+	double deltaTime = 0.0;
+	const double maxFPS = 120.0;
+	const double maxPeriod = 1.0 / maxFPS;
+};
+
 
 // Main class for creating and interacting with a GLFW window.
 // Only wraps the most fundamental parts of the API
@@ -91,9 +98,13 @@ public:
 	void openFile(std::string& fileLocation, const std::vector<COMDLG_FILTERSPEC>& fileTypes = std::vector<COMDLG_FILTERSPEC>());
 	bool openTutorialVideo();
 
+	FrameRateLimitSettings& getFrameRateLimitSettings() { return this->frameRateLimitSettings; }
+
 private:
 	std::unique_ptr<GLFWwindow, WindowDeleter> window; // owning ptr (from GLFW)
 	std::shared_ptr<CallbackInterface> callbacks;      // optional shared owning ptr (user provided)
+
+	FrameRateLimitSettings frameRateLimitSettings;
 
 	void connectCallbacks();
 

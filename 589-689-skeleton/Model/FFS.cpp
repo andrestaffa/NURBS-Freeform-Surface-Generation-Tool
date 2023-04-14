@@ -490,7 +490,7 @@ void FFS::resetTerrain() {
 
 void FFS::resetTerrainToDefaults() {
 	this->resetTerrain();
-	this->terrainSettings.nControlPoints = 55;
+	this->terrainSettings.nControlPoints = 20;
 	this->terrainSettings.terrainSize = 10.0f;
 	this->terrainSettings.bIsChanging = true;
 }
