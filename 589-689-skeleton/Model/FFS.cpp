@@ -409,28 +409,37 @@ void FFS::detectControlPoints(const glm::vec3& mousePosition3D) {
 			float distanceXZ = glm::length(glm::vec2(mousePosition3D.x, mousePosition3D.z) - glm::vec2(pointPos->x, pointPos->z));
 			float distanceY = glm::length(glm::vec1(mousePosition3D.y) - glm::vec1(pointPos->y));
 			if (distanceXZ <= this->brushSettings.brushRadius && distanceY <= 1000.0f) {
-				this->controlPointProperties.selectedControlPoints.push_back(&this->generatedTerrain.generatedPoints[i][j]);
+				SelectedControlPoint selectedControlPoint;
+				selectedControlPoint.controlPoint = &this->generatedTerrain.generatedPoints[i][j];
+				this->controlPointBlend(mousePosition3D);
+				this->controlPointProperties.selectedControlPoints.push_back(selectedControlPoint);
 				this->controlPointProperties.selectedWeights.push_back(&this->generatedTerrain.weights[i][j]);
+
 			}
 		}
 	}
 	this->selectedArea.gpuGeom.bind();
-	for (const glm::vec3* p : this->controlPointProperties.selectedControlPoints) this->selectedArea.cpuGeom.verts.push_back(*p);
+	for (const SelectedControlPoint& sp : this->controlPointProperties.selectedControlPoints) {
+		glm::vec3* p = sp.controlPoint;
+		this->selectedArea.cpuGeom.verts.push_back(*p);
+	}
 	this->selectedArea.cpuGeom.cols.resize(this->selectedArea.cpuGeom.verts.size(), glm::vec3(0.0f, 0.0f, 1.0f));
 	this->selectedArea.gpuGeom.setVerts(this->selectedArea.cpuGeom.verts);
 	this->selectedArea.gpuGeom.setCols(this->selectedArea.cpuGeom.cols);
 	this->controlPointsChangeColor(mousePosition3D, glm::vec3(0.0f, 0.0f, 1.0f));
 }
 
-void FFS::updateControlPoints(const glm::vec3& position) {
+void FFS::updateControlPointsPosition(float yValue) {
 	if (this->controlPoints.cpuGeom.verts.empty() || this->controlPointProperties.selectedControlPoints.empty()) return;
-	for (glm::vec3* point : this->controlPointProperties.selectedControlPoints) {
-		*point += position;
+	float brushRateScale = this->brushSettings.brushRateScale;
+	for (SelectedControlPoint& sp : this->controlPointProperties.selectedControlPoints) {
+		glm::vec3* point = sp.controlPoint;
+		*point += glm::vec3(0.0f, yValue * brushRateScale * sp.blendFactor, 0.0f);
 	}
 	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
 }
 
-void FFS::updateControlPoints(float weight) {
+void FFS::updateControlPointsWeights(float weight) {
 	if (this->controlPoints.cpuGeom.verts.empty() || this->controlPointProperties.selectedWeights.empty()) return;
 	for (float* w : this->controlPointProperties.selectedWeights) {
 		if (*w <= 1.0f && weight < 0.0f) {
@@ -444,6 +453,27 @@ void FFS::updateControlPoints(float weight) {
 		*w += weight;
 	}
 	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
+}
+
+void FFS::controlPointBlend(const glm::vec3& mousePosition3D) {
+	if (this->controlPoints.cpuGeom.verts.empty() || this->controlPointProperties.selectedControlPoints.empty()) return;
+	for (SelectedControlPoint& sp : this->controlPointProperties.selectedControlPoints) {
+		glm::vec2 mouseXZPos = glm::vec2(mousePosition3D.x, mousePosition3D.z);
+		glm::vec2 cpXZPos = glm::vec2(sp.controlPoint->x, sp.controlPoint->z);
+		float distance = glm::distance(mouseXZPos, cpXZPos);
+		float blend = 1.0f;
+		if (this->brushSettings.items[this->brushSettings.current_item] == "Inverse Distance Squared") {
+			blend = 1.0f / (distance * distance);
+		} else if (this->brushSettings.items[this->brushSettings.current_item] == "Distance Squared") {
+			blend = (distance * distance);
+		} else {
+			blend = 1.0f;
+		}
+		if (distance < this->brushSettings.blendRadius) {
+			if (blend >= this->brushSettings.maxBlendValue) blend = this->brushSettings.maxBlendValue;
+			sp.blendFactor = blend;
+		}
+	}
 }
 
 // MARK: - Colors
@@ -476,7 +506,7 @@ void FFS::resetTerrain() {
 	this->freeFormSurface.cpuGeom.cols.clear(); this->freeFormSurface.cpuGeom.cols.shrink_to_fit(); std::vector<glm::vec3>().swap(this->freeFormSurface.cpuGeom.cols);
 	this->generatedTerrain.generatedPoints.clear(); this->generatedTerrain.generatedPoints.shrink_to_fit(); std::vector<std::vector<glm::vec3>>().swap(this->generatedTerrain.generatedPoints);
 	this->generatedTerrain.weights.clear(); this->generatedTerrain.weights.shrink_to_fit(); std::vector<std::vector<float>>().swap(this->generatedTerrain.weights);
-	this->controlPointProperties.selectedControlPoints.clear(); this->controlPointProperties.selectedControlPoints.shrink_to_fit(); std::vector<glm::vec3*>().swap(this->controlPointProperties.selectedControlPoints);
+	this->controlPointProperties.selectedControlPoints.clear(); this->controlPointProperties.selectedControlPoints.shrink_to_fit(); std::vector<SelectedControlPoint>().swap(this->controlPointProperties.selectedControlPoints);
 	this->controlPointProperties.selectedWeights.clear(); this->controlPointProperties.selectedWeights.shrink_to_fit(); std::vector<float*>().swap(this->controlPointProperties.selectedWeights);
 	this->controlPoints.gpuGeom.bind();
 	this->controlPoints.gpuGeom.setVerts(this->controlPoints.cpuGeom.verts);
@@ -499,7 +529,8 @@ void FFS::resetTerrainToDefaults() {
 
 void FFS::resetSelectedControlPoints() {
 	if (this->controlPointProperties.selectedControlPoints.empty()) return;
-	for (glm::vec3* point : this->controlPointProperties.selectedControlPoints) {
+	for (SelectedControlPoint& sp : this->controlPointProperties.selectedControlPoints) {
+		glm::vec3* point = sp.controlPoint;
 		*point = glm::vec3(point->x, 0.0f, point->z);
 	}
 	this->generateTerrain(this->generatedTerrain.generatedPoints, this->generatedTerrain.weights);
@@ -541,6 +572,9 @@ void FFS::resetBurshToDefaults() {
 	this->brushSettings.brushRateScale = 1.0f;
 	this->brushSettings.bIsRising = true;
 	this->brushSettings.bDisplayBrushArea = true;
+	this->brushSettings.current_item = 0;
+	this->brushSettings.blendRadius = 1.5f;
+	this->brushSettings.maxBlendValue = 7.0f;
 }
 
 // Random Generation Settings

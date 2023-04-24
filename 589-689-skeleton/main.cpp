@@ -245,15 +245,14 @@ int main() {
 		model.getTerrain()->detectControlPoints(mousePosition3D);
 
 		if (inputManager->onKeyHeld(GLFW_MOUSE_BUTTON_LEFT)) {
-			glm::vec2 mousePosition2D = inputManager->getMousePosition2D();
 			float val = (model.getTerrain()->getBrushSettings().bIsRising) ? 0.1f : -0.1f;
-			model.getTerrain()->updateControlPoints(glm::vec3(0.0f, val * model.getTerrain()->getBrushSettings().brushRateScale, 0.0f));
+			model.getTerrain()->updateControlPointsPosition(val);
 		}
 
 		if (inputManager->isScrollingUp()) {
-			model.getTerrain()->updateControlPoints(1.0f * model.getTerrain()->getNURBSSettings().weightRate);
+			model.getTerrain()->updateControlPointsWeights(1.0f * model.getTerrain()->getNURBSSettings().weightRate);
 		} else if (inputManager->isScrollingDown()) {
-			model.getTerrain()->updateControlPoints(-1.0f * model.getTerrain()->getNURBSSettings().weightRate);
+			model.getTerrain()->updateControlPointsWeights(-1.0f * model.getTerrain()->getNURBSSettings().weightRate);
 		}
 
 		// ImGUI
@@ -323,7 +322,22 @@ int main() {
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
 				ImGui::Checkbox("Rise/Lower", &model.getTerrain()->getBrushSettings().bIsRising);
 				ImGui::Checkbox("Display Bursh Area", &model.getTerrain()->getBrushSettings().bDisplayBrushArea);
+				for (int i = 0; i < 5; i++) ImGui::Spacing();
+				ImGui::Text("Bursh Blending Settings:");
 				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				if (ImGui::BeginCombo("Blend Function", model.getTerrain()->getBrushSettings().items[model.getTerrain()->getBrushSettings().current_item])) {
+					for (int n = 0; n < 3; n++) {
+						bool is_selected = (model.getTerrain()->getBrushSettings().current_item == n);
+						if (ImGui::Selectable(model.getTerrain()->getBrushSettings().items[n], is_selected))
+							model.getTerrain()->getBrushSettings().current_item = n;
+						if (is_selected) ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+				for (int i = 0; i < 3; i++) ImGui::Spacing();
+				ImGui::SliderFloat("Blend Radius (from center) ", &model.getTerrain()->getBrushSettings().blendRadius, 0.0f, model.getTerrain()->getBrushSettings().brushRadius);
+				ImGui::SliderFloat("Max Blend Value", &model.getTerrain()->getBrushSettings().maxBlendValue, 3.0f, 10.0f);
+				for (int i = 0; i < 5; i++) ImGui::Spacing();
 				if (ImGui::Button("Reset to Defaults")) model.getTerrain()->resetBurshToDefaults();
 				ImGui::PopItemWidth();
 				ImGui::EndTabItem();

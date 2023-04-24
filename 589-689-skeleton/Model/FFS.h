@@ -20,8 +20,13 @@ struct GeneratedTerrain {
 	std::vector<std::vector<glm::vec3>> Q;
 };
 
+struct SelectedControlPoint {
+	glm::vec3* controlPoint = nullptr;
+	float blendFactor = 1.0f;
+};
+
 struct ControlPointProperties {
-	std::vector<glm::vec3*> selectedControlPoints;
+	std::vector<SelectedControlPoint> selectedControlPoints;
 	std::vector<float*> selectedWeights;
 };
 
@@ -53,6 +58,11 @@ struct BrushSettings {
 	float brushRateScale = 1.0f;
 	bool bIsRising = true;
 	bool bDisplayBrushArea = true;
+	
+	int current_item = 0;
+	const char* items[3] = { "None", "Inverse Distance Squared", "Distance Squared" };
+	float blendRadius = 1.5f;
+	float maxBlendValue = 7.0f;
 };
 
 struct ImportNOBJSettings {
@@ -123,8 +133,10 @@ public:
 
 	// Control Point Updates
 	void detectControlPoints(const glm::vec3& mousePosition3D);
-	void updateControlPoints(const glm::vec3& position);
-	void updateControlPoints(float weight);
+	void updateControlPointsPosition(float yValue);
+	void updateControlPointsWeights(float weight);
+	void controlPointBlend(const glm::vec3& mousePosition3D);
+
 
 private:
 
